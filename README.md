@@ -50,7 +50,7 @@ Website bán cây cảnh full chức năng, xây dựng bằng Node.js + Express
 3. Docker
 docker-compose up --build
 
-App chạy tại: http://localhost:3000
+App chạy tại: http://localhost:4000
 
 4. Chạy không Docker
 npm install
@@ -72,6 +72,3 @@ helpers/
 middleware/
 public/
 
-Tác giả: Hữu Khánh
-
-![Uploading image.png…]()
