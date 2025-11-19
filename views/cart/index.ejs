@@ -1,0 +1,77 @@
+<%- include('../partials/header', { title }) %>
+
+<h2>Giỏ hàng</h2>
+
+<% if (message) { %>
+  <% if (message === 'added') { %>
+    <p class="alert alert-success">Đã thêm sản phẩm vào giỏ.</p>
+  <% } else if (message === 'updated') { %>
+    <p class="alert alert-success">Cập nhật giỏ hàng thành công.</p>
+  <% } else if (message === 'empty') { %>
+    <p class="alert alert-error">Giỏ hàng đang trống.</p>
+  <% } else if (message === 'error') { %>
+    <p class="alert alert-error">Không thể cập nhật giỏ hàng. Vui lòng thử lại.</p>
+  <% } %>
+<% } %>
+
+<% if (cart.items.length === 0) { %>
+  <p style="color:var(--muted)">Giỏ hàng trống. <a href="/shop">Tiếp tục mua sắm</a>.</p>
+<% } else { %>
+  <table class="cart-table">
+    <thead>
+      <tr>
+        <th>Sản phẩm</th>
+        <th>Số lượng</th>
+        <th>Giá</th>
+        <th>Tạm tính</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% cart.items.forEach((item) => {
+        const rawId = item.productID && item.productID._id ? item.productID._id : item.productID;
+        const productIdValue = rawId && rawId.toString ? rawId.toString() : rawId;
+      %>
+        <tr>
+          <td>
+            <strong><%= item.productName %></strong>
+            <% if (item.variant && item.variant.variantName) { %>
+              <div class="meta">Biến thể: <%= item.variant.variantName %> <%= item.variant.size ? `(${item.variant.size})` : '' %></div>
+            <% } %>
+          </td>
+          <td>
+            <form method="POST" action="/cart/update" class="cart-update-form">
+              <input type="hidden" name="productId" value="<%= productIdValue %>">
+              <input type="hidden" name="variantId" value="<%= item.variantId || '' %>">
+              <input type="number" name="quantity" value="<%= item.quantity %>" min="0">
+              <button class="btn btn-secondary" type="submit">Cập nhật</button>
+            </form>
+          </td>
+          <td><%= item.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
+          <td><%= item.subTotal.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
+          <td>
+            <form method="POST" action="/cart/update">
+              <input type="hidden" name="productId" value="<%= productIdValue %>">
+              <input type="hidden" name="variantId" value="<%= item.variantId || '' %>">
+              <input type="hidden" name="quantity" value="0">
+              <button class="btn btn-danger" type="submit">Xóa</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <div class="cart-summary">
+    <div>
+      <strong>Tổng cộng:</strong>
+      <span><%= cart.totalPrice.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span>
+    </div>
+    <div>
+      <a class="btn btn-secondary" href="/shop">Tiếp tục mua</a>
+      <a class="btn btn-primary" href="/checkout">Thanh toán</a>
+    </div>
+  </div>
+<% } %>
+
+<%- include('../partials/footer') %>

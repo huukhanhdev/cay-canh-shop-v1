@@ -1,0 +1,158 @@
+<%- include('../partials/header', { title }) %>
+
+<section class="shop-hero">
+  <div>
+    <h2>Khám phá cây cảnh và phụ kiện</h2>
+    <p>Chọn danh mục, lọc theo thương hiệu, giá và sắp xếp theo nhu cầu của bạn.</p>
+  </div>
+</section>
+
+<form class="shop-controls" method="GET" action="/shop">
+  <input type="hidden" name="page" value="1">
+  <label>
+    Loại sản phẩm
+    <select name="type" onchange="this.form.submit()">
+      <option value="" <%= filtersState.type === '' ? 'selected' : '' %>>Tất cả</option>
+      <option value="indoor" <%= filtersState.type === 'indoor' ? 'selected' : '' %>>Cây trong nhà</option>
+      <option value="outdoor" <%= filtersState.type === 'outdoor' ? 'selected' : '' %>>Cây ngoài trời</option>
+      <option value="pot" <%= filtersState.type === 'pot' ? 'selected' : '' %>>Chậu cây</option>
+    </select>
+  </label>
+  <% if (filtersState.category) { %>
+    <input type="hidden" name="category" value="<%= filtersState.category %>">
+  <% } %>
+  <label>
+    Từ khóa
+    <input type="search" name="q" value="<%= filtersState.q %>" placeholder="Tìm sản phẩm..." />
+  </label>
+  <label>
+    Thương hiệu
+    <select name="brand">
+      <option value="">Tất cả</option>
+      <% brands.forEach((brand) => { %>
+        <option value="<%= brand %>" <%= filtersState.brand === brand ? 'selected' : '' %>><%= brand %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>
+    Xếp hạng
+    <select name="rating">
+      <option value="">Tất cả</option>
+      <% [5,4,3,2,1].forEach((score) => { %>
+        <option value="<%= score %>" <%= Number(filtersState.rating) === score ? 'selected' : '' %>>Từ <%= score %> sao</option>
+      <% }) %>
+    </select>
+  </label>
+  <label>
+    Giá tối thiểu
+    <input type="number" name="priceMin" min="0" value="<%= filtersState.priceMin %>" placeholder="ví dụ 100000" />
+  </label>
+  <label>
+    Giá tối đa
+    <input type="number" name="priceMax" min="0" value="<%= filtersState.priceMax %>" placeholder="ví dụ 500000" />
+  </label>
+  <label>
+    Sắp xếp
+    <select name="sort" onchange="this.form.submit()">
+      <% sortOptions.forEach((opt) => { %>
+        <option value="<%= opt.key %>" <%= sortKey === opt.key ? 'selected' : '' %>><%= opt.label %></option>
+      <% }) %>
+    </select>
+  </label>
+  <% if (availableTags.length || (filtersState.tags && filtersState.tags.length)) { 
+       const tagPool = Array.from(new Set([...(filtersState.tags || []), ...availableTags])).slice(0, 12);
+  %>
+    <div class="tag-filter">
+      <span>Tags:</span>
+      <% tagPool.forEach((tag) => { %>
+        <label>
+          <input type="checkbox" name="tags" value="<%= tag %>" <%= filtersState.tags.includes(tag) ? 'checked' : '' %>>
+          <span><%= tag %></span>
+        </label>
+      <% }) %>
+    </div>
+  <% } %>
+  <div class="filter-actions">
+    <button class="btn btn-primary" type="submit">Áp dụng</button>
+    <a class="btn btn-secondary" href="/shop">Xóa lọc</a>
+  </div>
+</form>
+
+<% if (typeof error !== 'undefined' && error) { %>
+  <p class="alert alert-error"><%= error %></p>
+<% } %>
+
+<div class="shop-layout">
+<aside class="shop-sidebar">
+  <h3>Danh mục</h3>
+  <ul>
+    <% Object.entries(groupedCategories).forEach(([type, bucket]) => { %>
+      <li>
+        <strong><%= type === 'indoor' ? 'Cây trong nhà' : (type === 'outdoor' ? 'Cây ngoài trời' : 'Chậu cây') %></strong>
+        <ul>
+          <% (bucket.parents || []).forEach((parent) => { %>
+            <li>
+              <span style="font-weight:600"><%= parent.name %></span>
+              <% const children = bucket.childrenByParent[parent.id] || []; %>
+              <ul>
+                <% children.forEach((child) => { %>
+                  <li>
+                    <a href="/shop?type=<%= type %>&category=<%= child.slug %>" <%= activeCategory && activeCategory.slug === child.slug ? 'class="active"' : '' %>>
+                      <%= child.name %>
+                    </a>
+                  </li>
+                <% }) %>
+              </ul>
+            </li>
+          <% }) %>
+        </ul>
+      </li>
+    <% }) %>
+  </ul>
+</aside>
+
+<section class="product-grid">
+  <% if (products.length === 0) { %>
+    <p style="color:var(--muted)">Chưa có sản phẩm nào phù hợp với bộ lọc hiện tại.</p>
+  <% } %>
+  <% products.forEach((product) => { 
+      const firstVariant = Array.isArray(product.variants) && product.variants.length ? product.variants[0] : null;
+  %>
+    <article class="product-card">
+      <a href="/shop/<%= product.slug %>">
+        <img src="<%= Array.isArray(product.img) && product.img.length ? product.img[0] : '/images/default-plant.jpg' %>" alt="<%= product.name %>">
+      </a>
+      <div class="product-card__body">
+        <h3><a href="/shop/<%= product.slug %>"><%= product.name %></a></h3>
+        <p class="meta">Thương hiệu: <%= product.brand || 'Cây Cảnh Shop' %></p>
+        <p class="product-snippet"><%= (product.description || '').split('.').slice(0, 2).join('.') %></p>
+        <p class="price"><%= (firstVariant?.price || product.price || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></p>
+        <p class="meta">
+          <% (product.tags || []).slice(0, 3).forEach((tag) => { %>
+            <span class="tag-pill"><%= tag %></span>
+          <% }) %>
+        </p>
+        <form method="POST" action="/cart/add">
+          <input type="hidden" name="productId" value="<%= product._id %>">
+          <% if (firstVariant) { %>
+            <input type="hidden" name="variantId" value="<%= firstVariant._id %>">
+          <% } %>
+          <input type="number" name="quantity" value="1" min="1">
+          <button class="btn btn-primary" type="submit">Thêm vào giỏ</button>
+        </form>
+      </div>
+    </article>
+  <% }) %>
+</section>
+
+</div>
+
+<nav class="pagination">
+  <% for (let p = 1; p <= pagination.totalPages; p++) { 
+      const qs = baseQueryString ? `${baseQueryString}&page=${p}` : `page=${p}`;
+  %>
+    <a href="/shop?<%= qs %>" class="<%= p === pagination.page ? 'active' : '' %>"><%= p %></a>
+  <% } %>
+</nav>
+
+<%- include('../partials/footer') %>

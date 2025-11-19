@@ -1,0 +1,65 @@
+<% if (Array.isArray(locations) && locations.length) { %>
+  <script>
+    (() => {
+      const LOCATIONS_DATA = <%- JSON.stringify(locations) %>;
+
+      function buildOptions(select, placeholder) {
+        select.innerHTML = '';
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = placeholder || 'Chọn';
+        select.appendChild(defaultOption);
+        return defaultOption;
+      }
+
+      function populateDistricts(citySelect, districtSelect, selectedDistrict) {
+        const placeholder = districtSelect.dataset.placeholder || 'Chọn quận/huyện';
+        buildOptions(districtSelect, placeholder);
+        const cityName = citySelect.value;
+        const cityEntry = LOCATIONS_DATA.find((loc) => loc.name === cityName);
+        if (!cityEntry) {
+          districtSelect.value = '';
+          return;
+        }
+        cityEntry.districts.forEach((district) => {
+          const option = document.createElement('option');
+          option.value = district;
+          option.textContent = district;
+          districtSelect.appendChild(option);
+        });
+        if (selectedDistrict && cityEntry.districts.includes(selectedDistrict)) {
+          districtSelect.value = selectedDistrict;
+        } else {
+          districtSelect.value = '';
+        }
+      }
+
+      document.querySelectorAll('[data-location-form]').forEach((container) => {
+        const citySelect = container.querySelector('[data-city-select]');
+        const districtSelect = container.querySelector('[data-district-select]');
+        if (!citySelect || !districtSelect) return;
+        const cityPlaceholder = citySelect.dataset.placeholder || 'Chọn tỉnh/thành phố';
+        buildOptions(citySelect, cityPlaceholder);
+        LOCATIONS_DATA.forEach((loc) => {
+          const option = document.createElement('option');
+          option.value = loc.name;
+          option.textContent = loc.name;
+          citySelect.appendChild(option);
+        });
+
+        const initialCity = citySelect.dataset.selected || '';
+        if (initialCity && LOCATIONS_DATA.find((loc) => loc.name === initialCity)) {
+          citySelect.value = initialCity;
+        }
+
+        const initialDistrict = districtSelect.dataset.selected || '';
+        populateDistricts(citySelect, districtSelect, initialDistrict);
+
+        citySelect.addEventListener('change', () => {
+          districtSelect.dataset.selected = '';
+          populateDistricts(citySelect, districtSelect, '');
+        });
+      });
+    })();
+  </script>
+<% } %>

@@ -1,0 +1,172 @@
+<%- include('../partials/header', { title }) %>
+
+<section class="admin-header">
+  <div>
+    <h2>Thông tin cá nhân</h2>
+    <p>Quản lý hồ sơ, địa chỉ nhận hàng và bảo mật tài khoản.</p>
+  </div>
+</section>
+
+<% const addresses = Array.isArray(user.shippingAddresses) ? user.shippingAddresses : []; %>
+<% if (success === 'profile_saved') { %>
+  <p class="alert alert-success">Đã cập nhật hồ sơ.</p>
+<% } else if (success === 'address_added') { %>
+  <p class="alert alert-success">Đã thêm địa chỉ mới.</p>
+<% } else if (success === 'address_deleted') { %>
+  <p class="alert alert-success">Đã xóa địa chỉ.</p>
+<% } else if (success === 'address_default') { %>
+  <p class="alert alert-success">Đã cập nhật địa chỉ mặc định.</p>
+<% } else if (success === 'address_invalid') { %>
+  <p class="alert alert-error">Vui lòng nhập đầy đủ thông tin địa chỉ.</p>
+<% } else if (success === 'address_error') { %>
+  <p class="alert alert-error">Không thể thao tác địa chỉ. Vui lòng thử lại.</p>
+<% } %>
+<% if (error) { %>
+  <p class="alert alert-error"><%= error %></p>
+<% } %>
+<% if (passwordSuccess === 'password_updated') { %>
+  <p class="alert alert-success">Đã đổi mật khẩu.</p>
+<% } %>
+<% if (passwordError) { %>
+  <p class="alert alert-error"><%= passwordError %></p>
+<% } %>
+
+<div class="order-detail">
+  <form class="admin-form" method="POST" action="/account/profile">
+    <h3>Hồ sơ cá nhân</h3>
+    <label>
+      Họ tên
+      <input type="text" name="fullName" value="<%= user.fullName %>" required />
+    </label>
+    <label>
+      Email
+      <input type="email" value="<%= user.email %>" disabled />
+      <small>Email không thể thay đổi.</small>
+    </label>
+    <label>
+      Số điểm thưởng
+      <input type="number" value="<%= user.loyaltyPoints || 0 %>" disabled />
+      <small>Điểm được cộng khi đơn hàng hoàn tất.</small>
+    </label>
+
+    <h4>Địa chỉ mặc định</h4>
+    <div class="form-grid">
+      <label>
+        Họ tên người nhận
+        <input type="text" name="shippingFullName" value="<%= address && address.fullName ? address.fullName : '' %>" />
+      </label>
+      <label>
+        Số điện thoại
+        <input type="text" name="shippingPhone" value="<%= address && address.phone ? address.phone : '' %>" />
+      </label>
+    </div>
+    <label>
+      Đường / Số nhà
+      <input type="text" name="shippingStreet" value="<%= address && address.street ? address.street : '' %>" />
+    </label>
+    <div class="form-grid" data-location-form>
+      <label>
+        Tỉnh / Thành phố
+        <select name="shippingCity" data-city-select data-placeholder="Chọn tỉnh/thành" data-selected="<%= address && address.city ? address.city : '' %>">
+          <option value="">Chọn tỉnh/thành</option>
+        </select>
+      </label>
+      <label>
+        Quận / Huyện
+        <select name="shippingDistrict" data-district-select data-placeholder="Chọn quận/huyện" data-selected="<%= address && address.district ? address.district : '' %>">
+          <option value="">Chọn quận/huyện</option>
+        </select>
+      </label>
+    </div>
+
+    <button type="submit">Lưu thay đổi</button>
+  </form>
+
+  <form class="admin-form" method="POST" action="/account/profile/password">
+    <h3>Đổi mật khẩu</h3>
+    <label>
+      Mật khẩu hiện tại
+      <input type="password" name="currentPassword" required />
+    </label>
+    <label>
+      Mật khẩu mới
+      <input type="password" name="newPassword" required minlength="6" />
+    </label>
+    <label>
+      Nhập lại mật khẩu mới
+      <input type="password" name="confirmPassword" required minlength="6" />
+    </label>
+    <button type="submit">Cập nhật mật khẩu</button>
+  </form>
+</div>
+
+<section class="admin-form">
+  <h3>Địa chỉ đã lưu</h3>
+  <% if (!addresses.length) { %>
+    <p style="color:var(--muted)">Bạn chưa có địa chỉ nào. Hãy thêm địa chỉ mới bên dưới.</p>
+  <% } %>
+  <div class="address-list">
+    <% addresses.forEach((addr, index) => { %>
+      <div class="address-card">
+        <div>
+          <strong><%= addr.fullName || 'Chưa có tên' %></strong>
+          <p><%= addr.phone || 'Chưa có số điện thoại' %></p>
+          <p><%= addr.street || '' %></p>
+          <p><%= [addr.district, addr.city].filter(Boolean).join(', ') %></p>
+        </div>
+        <div class="address-card__actions">
+          <% if (addr.isDefault) { %>
+            <span class="pill">Mặc định</span>
+          <% } else { %>
+            <form method="POST" action="/account/addresses/<%= index %>/default">
+              <button class="btn btn-secondary" type="submit">Đặt làm mặc định</button>
+            </form>
+          <% } %>
+          <form method="POST" action="/account/addresses/<%= index %>/delete" onsubmit="return confirm('Xóa địa chỉ này?');">
+            <button class="btn btn-danger" type="submit">Xóa</button>
+          </form>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+</section>
+
+<form class="admin-form" method="POST" action="/account/addresses">
+  <h3>Thêm địa chỉ mới</h3>
+  <div class="form-grid">
+    <label>
+      Họ tên người nhận
+      <input type="text" name="newAddressFullName" required />
+    </label>
+    <label>
+      Số điện thoại
+      <input type="text" name="newAddressPhone" required />
+    </label>
+  </div>
+  <label>
+    Đường / Số nhà
+    <input type="text" name="newAddressStreet" required />
+  </label>
+  <div class="form-grid" data-location-form>
+    <label>
+      Tỉnh / Thành phố
+      <select name="newAddressCity" data-city-select data-placeholder="Chọn tỉnh/thành">
+        <option value="">Chọn tỉnh/thành</option>
+      </select>
+    </label>
+    <label>
+      Quận / Huyện
+      <select name="newAddressDistrict" data-district-select data-placeholder="Chọn quận/huyện">
+        <option value="">Chọn quận/huyện</option>
+      </select>
+    </label>
+  </div>
+  <label style="display:flex;align-items:center;gap:8px;">
+    <input type="checkbox" name="newAddressIsDefault">
+    Đặt làm địa chỉ mặc định
+  </label>
+  <button type="submit">Thêm địa chỉ</button>
+</form>
+
+<%- include('../partials/location-script', { locations }) %>
+<%- include('../partials/footer') %>

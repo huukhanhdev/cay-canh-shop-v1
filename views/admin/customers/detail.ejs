@@ -1,0 +1,99 @@
+<%- include('../../partials/header', { title }) %>
+
+<section class="admin-header">
+  <div>
+    <h2><%= user.fullName %></h2>
+    <p><%= user.email %></p>
+  </div>
+  <div>
+    <% if (user.isVerified) { %>
+      <span class="status status-done">Đã xác thực</span>
+    <% } else { %>
+      <span class="status status-pending">Chưa xác thực</span>
+    <% } %>
+  </div>
+</section>
+
+<a class="btn btn-secondary" href="/admin/customers">← Quay lại danh sách</a>
+
+<% if (locals.msg === 'updated') { %>
+  <p class="alert alert-success">Đã lưu thay đổi.</p>
+<% } else if (locals.msg === 'error') { %>
+  <p class="alert alert-error">Không thể cập nhật khách hàng. Vui lòng thử lại.</p>
+<% } %>
+
+<form class="admin-form" method="POST" action="/admin/customers/<%= user._id %>">
+  <div class="form-grid">
+    <label>
+      Họ tên
+      <input type="text" name="fullName" value="<%= user.fullName %>" required />
+    </label>
+    <label>
+      Email
+      <input type="email" value="<%= user.email %>" disabled />
+    </label>
+  </div>
+
+  <div class="form-grid">
+    <label>
+      Vai trò
+      <select name="role">
+        <option value="customer" <%= user.role === 'customer' ? 'selected' : '' %>>Khách hàng</option>
+        <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>Quản trị</option>
+      </select>
+    </label>
+    <label>
+      Trạng thái xác thực
+      <select name="isVerified">
+        <option value="true" <%= user.isVerified ? 'selected' : '' %>>Đã xác thực</option>
+        <option value="false" <%= !user.isVerified ? 'selected' : '' %>>Chưa xác thực</option>
+      </select>
+    </label>
+  </div>
+
+  <label>
+    Điểm thưởng
+    <input type="number" name="loyaltyPoints" min="0" value="<%= user.loyaltyPoints || 0 %>" />
+  </label>
+
+  <label>
+    <input type="checkbox" name="resetOtp" value="true" />
+    Xóa mã OTP đang chờ (nếu có)
+  </label>
+
+  <h4>Địa chỉ mặc định</h4>
+  <div class="form-grid">
+    <label>
+      Họ tên người nhận
+      <input type="text" name="shippingFullName" value="<%= address && address.fullName ? address.fullName : '' %>" />
+    </label>
+    <label>
+      Số điện thoại
+      <input type="text" name="shippingPhone" value="<%= address && address.phone ? address.phone : '' %>" />
+    </label>
+  </div>
+  <label>
+    Đường / Số nhà
+    <input type="text" name="shippingStreet" value="<%= address && address.street ? address.street : '' %>" />
+  </label>
+  <div class="form-grid" data-location-form>
+    <label>
+      Tỉnh / Thành phố
+      <select name="shippingCity" data-city-select data-placeholder="Chọn tỉnh/thành" data-selected="<%= address && address.city ? address.city : '' %>">
+        <option value="">Chọn tỉnh/thành</option>
+      </select>
+    </label>
+    <label>
+      Quận / Huyện
+      <select name="shippingDistrict" data-district-select data-placeholder="Chọn quận/huyện" data-selected="<%= address && address.district ? address.district : '' %>">
+        <option value="">Chọn quận/huyện</option>
+      </select>
+    </label>
+  </div>
+
+  <button class="btn btn-primary" type="submit">Lưu thông tin</button>
+  <a class="btn btn-secondary" href="/admin/customers">Hủy</a>
+</form>
+
+<%- include('../../partials/location-script', { locations }) %>
+<%- include('../../partials/footer') %>

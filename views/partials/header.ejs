@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title><%= typeof title !== 'undefined' ? title : 'Cây Cảnh Shop' %></title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<header>
+  <a href="/">🌿 Cây Cảnh Shop</a>
+  <nav>
+    <a href="/">Trang chủ</a>
+    <% if (locals.isLoggedIn) { %>
+      <% if (locals.role === 'admin') { %>
+        <a href="/admin/dashboard">Dashboard</a>
+        <a href="/admin/products">Sản phẩm</a>
+        <a href="/admin/orders">Đơn hàng</a>
+        <a href="/admin/customers">Khách hàng</a>
+      <% } else { %>
+        <a href="/shop">Cửa hàng</a>
+        <a href="/cart">Giỏ hàng</a>
+        <a href="/orders">Đơn hàng</a>
+      <% } %>
+      <a href="/account/profile">Tài khoản</a>
+      <form class="nav-form" method="POST" action="/auth/logout">
+        <button type="submit">Đăng xuất</button>
+      </form>
+    <% } else { %>
+      <a href="/shop">Cửa hàng</a>
+      <a href="/cart">Giỏ hàng</a>
+      <a href="/auth/login">Đăng nhập</a>
+      <a href="/auth/register">Đăng ký</a>
+    <% } %>
+  </nav>
+</header>
+<main>

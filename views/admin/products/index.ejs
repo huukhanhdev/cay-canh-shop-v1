@@ -1,0 +1,69 @@
+<%- include('../../partials/header', { title: 'Quản lý sản phẩm' }) %>
+
+<section class="admin-header">
+  <div>
+    <h2>Quản lý sản phẩm</h2>
+    <p>Thêm, chỉnh sửa và xóa sản phẩm trong cửa hàng của bạn.</p>
+  </div>
+  <a class="btn btn-primary" href="/admin/products/new">+ Thêm sản phẩm</a>
+</section>
+
+<% if (typeof error !== 'undefined' && error) { %>
+  <p class="alert alert-error"><%= error %></p>
+<% } else if (typeof success !== 'undefined' && success) { %>
+  <% if (success === 'created') { %>
+    <p class="alert alert-success">Đã tạo sản phẩm mới.</p>
+  <% } else if (success === 'updated') { %>
+    <p class="alert alert-success">Đã cập nhật sản phẩm.</p>
+  <% } else if (success === 'deleted') { %>
+    <p class="alert alert-success">Đã xóa sản phẩm.</p>
+  <% } else if (success === 'not_found') { %>
+    <p class="alert alert-error">Không tìm thấy sản phẩm.</p>
+  <% } else if (success === 'false') { %>
+    <p class="alert alert-error">Có lỗi xảy ra, vui lòng thử lại.</p>
+  <% } %>
+<% } %>
+
+<div class="table-wrapper">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Tên</th>
+        <th>Danh mục</th>
+        <th>Giá</th>
+        <th>Kho</th>
+        <th>Loại</th>
+        <th>Cập nhật</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (products.length === 0) { %>
+        <tr>
+          <td colspan="7" style="text-align:center;color:var(--muted)">Chưa có sản phẩm nào.</td>
+        </tr>
+      <% } %>
+      <% products.forEach((product) => { %>
+        <tr>
+          <td>
+            <strong><%= product.name %></strong>
+            <div class="meta">Slug: <%= product.slug %></div>
+          </td>
+          <td><%= product.categoryID ? product.categoryID.name : '—' %></td>
+          <td><%= product.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
+          <td><%= product.inStock %></td>
+          <td><%= (categoryLabels[product.type] || product.type) %></td>
+          <td><%= product.updatedAt ? new Date(product.updatedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '' %></td>
+          <td class="actions">
+            <a class="btn btn-secondary" href="/admin/products/<%= product._id %>/edit">Sửa</a>
+            <form method="POST" action="/admin/products/<%= product._id %>/delete" onsubmit="return confirm('Bạn chắc chắn muốn xóa sản phẩm này?');">
+              <button type="submit" class="btn btn-danger">Xóa</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('../../partials/footer') %>

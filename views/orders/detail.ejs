@@ -1,0 +1,82 @@
+<%- include('../partials/header', { title }) %>
+
+<% if (msg === 'canceled') { %>
+  <p class="alert alert-success">Đơn hàng đã được hủy thành công.</p>
+<% } else if (msg === 'reason_required') { %>
+  <p class="alert alert-error">Vui lòng nhập lý do hủy đơn.</p>
+<% } else if (msg === 'cannot_cancel') { %>
+  <p class="alert alert-error">Không thể hủy đơn khi đang giao hoặc đã hoàn thành.</p>
+<% } else if (msg === 'error') { %>
+  <p class="alert alert-error">Không thể hủy đơn hàng lúc này. Vui lòng thử lại.</p>
+<% } %>
+
+<div class="order-detail">
+  <section class="order-card">
+    <h2>Đơn hàng #<%= order._id.toString().slice(-6) %></h2>
+    <p><strong>Trạng thái:</strong> <span class="status status-<%= order.status %>"><%= order.status %></span></p>
+    <p><strong>Ngày đặt:</strong> <%= new Date(order.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></p>
+    <p><strong>Điểm thưởng:</strong> <%= order.pointEarned || 0 %></p>
+  </section>
+
+  <section class="order-card">
+    <h3>Địa chỉ giao hàng</h3>
+    <p><%= order.address?.street %>, <%= order.address?.district %>, <%= order.address?.city %></p>
+  </section>
+
+  <section class="order-card">
+    <h3>Sản phẩm</h3>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Sản phẩm</th>
+          <th>Số lượng</th>
+          <th>Giá</th>
+          <th>Tạm tính</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% order.items.forEach((item) => { %>
+          <tr>
+            <td><%= item.productName %></td>
+            <td><%= item.quantity %></td>
+            <td><%= (item.price || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
+            <td><%= (item.subTotal || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <p style="text-align:right;font-weight:700;margin-top:12px;">Tổng: <%= (order.totalPrice || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></p>
+  </section>
+
+  <% if (order.status === 'canceled') { %>
+    <section class="order-card">
+      <h3>Thông tin hủy đơn</h3>
+      <p><strong>Lý do:</strong> <%= order.cancelReason || 'Không có' %></p>
+      <% if (order.canceledAt) { %>
+        <p><strong>Thời gian:</strong> <%= new Date(order.canceledAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></p>
+      <% } %>
+    </section>
+  <% } %>
+
+  <% if (typeof canCancel !== 'undefined' && canCancel) { %>
+    <section class="order-card">
+      <h3>Hủy đơn hàng</h3>
+      <p>Chỉ hỗ trợ hủy khi đơn còn trạng thái <strong>pending</strong> hoặc <strong>preparing</strong>.</p>
+      <form class="order-cancel-form" method="POST" action="/orders/<%= order._id %>/cancel">
+        <label for="reason">
+          Lý do hủy
+        </label>
+        <textarea id="reason" name="reason" rows="4" required placeholder="Ví dụ: Thay đổi kế hoạch, nhập sai địa chỉ..."></textarea>
+        <button class="btn btn-danger" type="submit" onclick="return confirm('Bạn chắc chắn muốn hủy đơn hàng này?');">
+          Xác nhận hủy đơn
+        </button>
+      </form>
+    </section>
+  <% } %>
+
+  <div style="margin-top:16px;">
+    <a class="btn btn-secondary" href="/orders">← Quay lại danh sách</a>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

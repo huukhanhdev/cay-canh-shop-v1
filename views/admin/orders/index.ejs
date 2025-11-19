@@ -1,0 +1,50 @@
+<%- include('../../partials/header', { title }) %>
+
+<section class="admin-header">
+  <div>
+    <h2>Quản lý đơn hàng</h2>
+    <p>Cập nhật trạng thái và theo dõi giao vận.</p>
+  </div>
+</section>
+
+<% if (typeof error !== 'undefined' && error) { %>
+  <p class="alert alert-error"><%= error %></p>
+<% } else if (success === 'updated') { %>
+  <p class="alert alert-success">Đã cập nhật trạng thái đơn hàng.</p>
+<% } else if (success === 'not_found') { %>
+  <p class="alert alert-error">Không tìm thấy đơn hàng.</p>
+<% } %>
+
+<div class="table-wrapper">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Mã đơn</th>
+        <th>Khách hàng</th>
+        <th>Ngày đặt</th>
+        <th>Trạng thái</th>
+        <th>Tổng tiền</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (orders.length === 0) { %>
+        <tr>
+          <td colspan="6" style="text-align:center;color:var(--muted)">Chưa có đơn hàng nào.</td>
+        </tr>
+      <% } %>
+      <% orders.forEach((order) => { %>
+        <tr>
+          <td>#<%= order._id.toString().slice(-6) %></td>
+          <td><%= order.userID ? order.userID.fullName || order.userID.email : 'N/A' %></td>
+          <td><%= new Date(order.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></td>
+          <td><span class="status status-<%= order.status %>"><%= order.status %></span></td>
+          <td><%= (order.totalPrice || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
+          <td><a class="btn btn-secondary" href="/admin/orders/<%= order._id %>">Chi tiết</a></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('../../partials/footer') %>

@@ -1,0 +1,105 @@
+<%- include('../../partials/header', { title }) %>
+
+<section class="admin-header">
+  <div>
+    <h2>Quản lý khách hàng</h2>
+    <p>Theo dõi người dùng, trạng thái xác thực và điểm thưởng.</p>
+  </div>
+  <div style="display:flex;gap:20px;">
+    <div>
+      <div class="meta">Tổng</div>
+      <strong><%= stats.total %></strong>
+    </div>
+    <div>
+      <div class="meta">Đã xác thực</div>
+      <strong><%= stats.verified %></strong>
+    </div>
+    <div>
+      <div class="meta">Quản trị</div>
+      <strong><%= stats.admin %></strong>
+    </div>
+  </div>
+</section>
+
+<form class="admin-form" method="GET" action="/admin/customers">
+  <div class="form-grid">
+    <label>
+      Từ khóa
+      <input type="text" name="q" placeholder="Email hoặc họ tên" value="<%= query.q || '' %>" />
+    </label>
+    <label>
+      Vai trò
+      <select name="role">
+        <option value="">Tất cả</option>
+        <option value="customer" <%= query.role === 'customer' ? 'selected' : '' %>>Khách hàng</option>
+        <option value="admin" <%= query.role === 'admin' ? 'selected' : '' %>>Quản trị</option>
+      </select>
+    </label>
+    <label>
+      Trạng thái
+      <select name="status">
+        <option value="">Tất cả</option>
+        <option value="verified" <%= query.status === 'verified' ? 'selected' : '' %>>Đã xác thực</option>
+        <option value="unverified" <%= query.status === 'unverified' ? 'selected' : '' %>>Chưa xác thực</option>
+      </select>
+    </label>
+  </div>
+  <div style="display:flex;gap:12px;justify-content:flex-end;">
+    <button class="btn btn-secondary" type="button" onclick="window.location='/admin/customers'">Xóa lọc</button>
+    <button class="btn btn-primary" type="submit">Lọc</button>
+  </div>
+</form>
+
+<% if (typeof error !== 'undefined' && error) { %>
+  <p class="alert alert-error"><%= error %></p>
+<% } else if (locals.msg === 'updated') { %>
+  <p class="alert alert-success">Đã cập nhật thông tin khách hàng.</p>
+<% } else if (locals.msg === 'not_found') { %>
+  <p class="alert alert-error">Không tìm thấy khách hàng.</p>
+<% } else if (locals.msg === 'error') { %>
+  <p class="alert alert-error">Có lỗi xảy ra. Vui lòng thử lại.</p>
+<% } %>
+
+<div class="table-wrapper">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Khách hàng</th>
+        <th>Email</th>
+        <th>Vai trò</th>
+        <th>Xác thực</th>
+        <th>Điểm</th>
+        <th>Đăng ký</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (users.length === 0) { %>
+        <tr>
+          <td colspan="7" style="text-align:center;color:var(--muted)">Không có khách hàng nào.</td>
+        </tr>
+      <% } %>
+      <% users.forEach((user) => { %>
+        <tr>
+          <td>
+            <strong><%= user.fullName %></strong>
+          </td>
+          <td><%= user.email %></td>
+          <td><%= user.role %></td>
+          <td>
+            <% if (user.isVerified) { %>
+              <span class="status status-done">Đã xác thực</span>
+            <% } else { %>
+              <span class="status status-pending">Chưa xác thực</span>
+            <% } %>
+          </td>
+          <td><%= user.loyaltyPoints || 0 %></td>
+          <td><%= new Date(user.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></td>
+          <td><a class="btn btn-secondary" href="/admin/customers/<%= user._id %>">Chi tiết</a></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('../../partials/footer') %>

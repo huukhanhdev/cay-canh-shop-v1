@@ -1,0 +1,190 @@
+<%- include('partials/header', { title }) %>
+
+<section class="hero">
+  <div class="hero__content">
+    <p class="hero__eyebrow">🌿 Chăm sóc không gian sống của bạn</p>
+    <h1>Cây xanh, cảm hứng và trải nghiệm mua sắm trọn vẹn.</h1>
+    <p class="hero__subtitle">
+      Đặt mua cây cảnh, quản lý đơn hàng, đánh giá sản phẩm và theo dõi ưu đãi – tất cả trong một nền tảng duy nhất.
+    </p>
+    <div class="hero__cta">
+      <% if (locals.isLoggedIn) { %>
+        <a class="btn btn-primary" href="/shop">Khám phá sản phẩm</a>
+        <% if (locals.role === 'admin') { %>
+          <a class="btn btn-secondary" href="/admin/dashboard">Vào bảng điều khiển</a>
+        <% } else { %>
+          <a class="btn btn-secondary" href="/cart">Xem giỏ hàng</a>
+        <% } %>
+      <% } else { %>
+        <a class="btn btn-primary" href="/auth/register">Bắt đầu ngay</a>
+        <a class="btn btn-secondary" href="/auth/login">Đăng nhập</a>
+      <% } %>
+    </div>
+  </div>
+  <div class="hero__media" aria-hidden="true"></div>
+</section>
+
+<section class="feature-grid">
+  <div class="feature-section">
+    <h2>Dành cho khách hàng</h2>
+    <p class="feature-section__subtitle">
+      Tối ưu hành trình mua cây cảnh với trải nghiệm cá nhân hoá.
+    </p>
+    <div class="feature-cards">
+      <% customerFeatures.forEach((f) => { %>
+        <article class="feature-card">
+          <h3><%= f.title %></h3>
+          <p><%= f.desc %></p>
+        </article>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<section class="feature-grid">
+  <div class="feature-section">
+    <h2>Sản phẩm mới</h2>
+    <p class="feature-section__subtitle">
+      Những mẫu cây và phụ kiện vừa cập bến, sẵn sàng làm mới không gian của bạn.
+    </p>
+    <div class="product-grid">
+      <% if (!latestProducts || latestProducts.length === 0) { %>
+        <p style="color:var(--muted);">Chưa có sản phẩm mới. Bạn hãy quay lại sau nhé!</p>
+      <% } else { %>
+        <% latestProducts.forEach((product) => { %>
+          <article class="product-card">
+            <a href="/shop/<%= product.slug %>">
+              <img src="<%= Array.isArray(product.img) && product.img.length ? product.img[0] : '/images/default-plant.jpg' %>" alt="<%= product.name %>">
+            </a>
+            <div class="product-card__body">
+              <h3><a href="/shop/<%= product.slug %>"><%= product.name %></a></h3>
+              <p class="price"><%= (product.price || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></p>
+              <a class="btn btn-secondary" href="/shop/<%= product.slug %>">Xem chi tiết</a>
+            </div>
+          </article>
+        <% }) %>
+      <% } %>
+    </div>
+  </div>
+</section>
+
+<section class="feature-grid">
+  <div class="feature-section">
+    <h2>Sản phẩm bán chạy</h2>
+    <p class="feature-section__subtitle">
+      Danh sách được cập nhật theo lượt mua thực tế, giúp bạn dễ dàng bắt kịp xu hướng.
+    </p>
+    <div class="product-grid">
+      <% if (!bestSellers || bestSellers.length === 0) { %>
+        <p style="color:var(--muted);">Chưa có dữ liệu sản phẩm nổi bật. Hãy quay lại sau nhé!</p>
+      <% } else { %>
+        <% bestSellers.forEach((product) => { 
+             const firstVariant = Array.isArray(product.variants) && product.variants.length ? product.variants[0] : null;
+        %>
+          <article class="product-card">
+            <a href="/shop/<%= product.slug %>">
+              <img src="<%= Array.isArray(product.img) && product.img.length ? product.img[0] : '/images/default-plant.jpg' %>" alt="<%= product.name %>">
+            </a>
+            <div class="product-card__body">
+              <h3><a href="/shop/<%= product.slug %>"><%= product.name %></a></h3>
+              <p class="price"><%= (product.price || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></p>
+              <p style="color:var(--muted); font-size: 0.9rem;">Đã bán <%= product.soldCount || 0 %> sản phẩm</p>
+              <div class="best-card__actions">
+                <a class="btn btn-primary" href="/shop/<%= product.slug %>">Xem chi tiết</a>
+                <form method="POST" action="/cart/add">
+                  <input type="hidden" name="productId" value="<%= product._id %>">
+                  <% if (firstVariant) { %>
+                    <input type="hidden" name="variantId" value="<%= firstVariant._id %>">
+                  <% } %>
+                  <input type="hidden" name="quantity" value="1">
+                  <button class="btn btn-secondary" type="submit">Thêm vào giỏ</button>
+                </form>
+              </div>
+            </div>
+          </article>
+        <% }) %>
+      <% } %>
+    </div>
+  </div>
+</section>
+
+<% if (Array.isArray(categorySections) && categorySections.length) { %>
+  <% categorySections.forEach((section) => { %>
+    <section class="feature-grid">
+      <div class="feature-section">
+        <div class="feature-section__header">
+          <h2><%= section.title %></h2>
+          <a class="pill" href="/shop?category=<%= section.slug %>">Xem tất cả</a>
+        </div>
+        <p class="feature-section__subtitle">
+          Gợi ý nổi bật trong danh mục <%= section.title.toLowerCase() %>.
+        </p>
+        <div class="product-grid">
+          <% if (!section.products || section.products.length === 0) { %>
+            <p style="color:var(--muted);">Chưa có sản phẩm trong danh mục này.</p>
+          <% } else { %>
+            <% section.products.forEach((product) => { 
+                 const firstVariant = Array.isArray(product.variants) && product.variants.length ? product.variants[0] : null;
+            %>
+              <article class="product-card">
+                <a href="/shop/<%= product.slug %>">
+                  <img src="<%= Array.isArray(product.img) && product.img.length ? product.img[0] : '/images/default-plant.jpg' %>" alt="<%= product.name %>">
+                </a>
+                <div class="product-card__body">
+                  <h3><a href="/shop/<%= product.slug %>"><%= product.name %></a></h3>
+                  <p class="price"><%= (product.price || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></p>
+                  <div class="best-card__actions">
+                    <a class="btn btn-secondary" href="/shop/<%= product.slug %>">Xem chi tiết</a>
+                    <form method="POST" action="/cart/add">
+                      <input type="hidden" name="productId" value="<%= product._id %>">
+                      <% if (firstVariant) { %>
+                        <input type="hidden" name="variantId" value="<%= firstVariant._id %>">
+                      <% } %>
+                      <input type="hidden" name="quantity" value="1">
+                      <button class="btn btn-primary" type="submit">Mua nhanh</button>
+                    </form>
+                  </div>
+                </div>
+              </article>
+            <% }) %>
+          <% } %>
+        </div>
+      </div>
+    </section>
+  <% }) %>
+<% } %>
+
+<section class="callout">
+  <div class="callout__content">
+    <h2>Ưu đãi xanh mỗi tuần</h2>
+    <p>
+      Thêm cây mới vào bộ sưu tập, theo dõi đơn hàng và tích điểm đổi quà. Chúng tôi giao tận nơi và hỗ trợ bạn chăm sóc từng chiếc lá.
+    </p>
+  </div>
+  <div class="callout__actions">
+    <% if (locals.isLoggedIn) { %>
+      <a class="btn btn-primary" href="/shop">Mua cây ngay</a>
+      <a class="btn btn-secondary" href="/orders">Đơn hàng của tôi</a>
+    <% } else { %>
+      <a class="btn btn-primary" href="/auth/register">Tham gia cộng đồng</a>
+      <a class="btn btn-secondary" href="/auth/login">Tôi đã có tài khoản</a>
+    <% } %>
+  </div>
+</section>
+
+<section class="info-columns">
+  <article>
+    <h3>Vườn cây được chọn lọc</h3>
+    <p>Hơn 150+ loại cây cảnh được chăm sóc kỹ lưỡng, kiểm định trước khi đến tay khách hàng.</p>
+  </article>
+  <article>
+    <h3>Giao hàng toàn quốc</h3>
+    <p>Đóng gói an toàn, hỗ trợ đổi trả miễn phí trong 48 giờ nếu cây gặp sự cố ngoài ý muốn.</p>
+  </article>
+  <article>
+    <h3>Hỗ trợ 24/7</h3>
+    <p>Đội ngũ tư vấn sẵn sàng giải đáp thắc mắc chăm sóc cây và xử lý đơn hàng bất kỳ lúc nào.</p>
+  </article>
+</section>
+
+<%- include('partials/footer') %>

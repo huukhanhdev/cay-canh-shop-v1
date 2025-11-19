@@ -1,0 +1,112 @@
+<%- include('../partials/header', { title }) %>
+
+<h2>Thông tin thanh toán</h2>
+
+<% if (error) { %>
+  <p class="alert alert-error"><%= error %></p>
+<% } %>
+
+<% const formData = prefill || {}; %>
+<% const isLoggedIn = typeof locals.isLoggedIn !== 'undefined' ? locals.isLoggedIn : false; %>
+<% const savedAddressList = Array.isArray(locals.savedAddresses)
+  ? locals.savedAddresses
+  : (typeof savedAddresses !== 'undefined' && Array.isArray(savedAddresses) ? savedAddresses : []); %>
+
+<div class="checkout-layout">
+  <form class="checkout-form" method="POST" action="/checkout">
+    <% if (!isLoggedIn) { %>
+      <label>Email
+        <input name="email" type="email" value="<%= formData.email || '' %>" required>
+      </label>
+      <p class="form-hint">Chúng tôi sẽ tạo tài khoản tự động bằng email này để bạn theo dõi đơn hàng.</p>
+    <% } else { %>
+      <label>Email
+        <input type="email" value="<%= locals.userEmail %>" disabled>
+      </label>
+    <% } %>
+    <label>Họ tên người nhận<input name="fullName" value="<%= formData.fullName || '' %>" required></label>
+    <label>Số điện thoại<input name="phone" value="<%= formData.phone || '' %>" required></label>
+    <label>Địa chỉ (đường)<input name="street" value="<%= formData.street || '' %>" required></label>
+    <% if (isLoggedIn && savedAddressList.length) { %>
+      <label>
+        Chọn địa chỉ đã lưu
+        <select id="savedAddressSelect">
+          <option value="">-- Chọn địa chỉ --</option>
+          <% savedAddressList.forEach((addr, idx) => { %>
+            <option value="<%= idx %>">
+              <%= addr.fullName || 'Không tên' %> - <%= [addr.street, addr.district, addr.city].filter(Boolean).join(', ') %>
+              <%= addr.isDefault ? '(Mặc định)' : '' %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+    <% } %>
+    <div class="form-grid" data-location-form>
+      <label>
+        Tỉnh/Thành phố
+        <select name="city" data-city-select data-placeholder="Chọn tỉnh/thành" data-selected="<%= formData.city || '' %>" required>
+          <option value="">Chọn tỉnh/thành</option>
+        </select>
+      </label>
+      <label>
+        Quận/Huyện
+        <select name="district" data-district-select data-placeholder="Chọn quận/huyện" data-selected="<%= formData.district || '' %>" required>
+          <option value="">Chọn quận/huyện</option>
+        </select>
+      </label>
+    </div>
+    <label>Ghi chú thêm<textarea name="note" rows="3"><%= formData.note || '' %></textarea></label>
+    <button class="btn btn-primary" type="submit">Đặt hàng</button>
+  </form>
+
+  <aside class="checkout-summary">
+    <h3>Tóm tắt đơn hàng</h3>
+    <ul>
+      <% cart.items.forEach((item) => { %>
+        <li>
+          <strong><%= item.productName %></strong>
+          <% if (item.variant && item.variant.variantName) { %>
+            <div class="meta">Biến thể: <%= item.variant.variantName %></div>
+          <% } %>
+          <span>x <%= item.quantity %> — <%= item.subTotal.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span>
+        </li>
+      <% }) %>
+    </ul>
+    <p><strong>Tổng:</strong> <%= cart.totalPrice.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></p>
+  </aside>
+</div>
+
+<%- include('../partials/location-script', { locations }) %>
+<% if (isLoggedIn && savedAddressList.length) { %>
+  <script>
+    (function () {
+      const addresses = <%- JSON.stringify(savedAddressList) %>;
+      const select = document.getElementById('savedAddressSelect');
+      if (!select) return;
+      const fullNameInput = document.querySelector('input[name="fullName"]');
+      const phoneInput = document.querySelector('input[name="phone"]');
+      const streetInput = document.querySelector('input[name="street"]');
+      const citySelect = document.querySelector('select[name="city"]');
+      const districtSelect = document.querySelector('select[name="district"]');
+      const noteInput = document.querySelector('textarea[name="note"]');
+
+      select.addEventListener('change', () => {
+        const idx = Number(select.value);
+        if (Number.isNaN(idx) || idx < 0 || idx >= addresses.length) return;
+        const addr = addresses[idx];
+        if (fullNameInput) fullNameInput.value = addr.fullName || '';
+        if (phoneInput) phoneInput.value = addr.phone || '';
+        if (streetInput) streetInput.value = addr.street || '';
+        if (noteInput) noteInput.value = '';
+        if (citySelect) {
+          citySelect.value = addr.city || '';
+          citySelect.dispatchEvent(new Event('change'));
+          setTimeout(() => {
+            if (districtSelect) districtSelect.value = addr.district || '';
+          }, 0);
+        }
+      });
+    })();
+  </script>
+<% } %>
+<%- include('../partials/footer') %>

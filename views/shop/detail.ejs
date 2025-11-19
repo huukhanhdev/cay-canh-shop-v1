@@ -1,0 +1,127 @@
+<%- include('../partials/header', { title }) %>
+
+<% const galleryImages = Array.isArray(product.img) && product.img.length ? product.img.slice() : ['/images/default-plant.jpg']; %>
+<% while (galleryImages.length < 3) { galleryImages.push(galleryImages[0]); } %>
+
+<section class="product-detail">
+  <div class="product-detail__gallery">
+    <% galleryImages.forEach((img) => { %>
+      <img src="<%= img %>" alt="<%= product.name %>">
+    <% }) %>
+  </div>
+  <div class="product-detail__info">
+    <h2><%= product.name %></h2>
+    <p class="meta">Thương hiệu: <strong><%= product.brand || 'Cây Cảnh Shop' %></strong></p>
+    <p class="meta">Danh mục: <%= product.categoryID ? product.categoryID.name : '' %></p>
+    <div class="rating-summary">
+      <div class="rating-score"><%= avgRating || 0 %><span>/5</span></div>
+      <div><%= ratingCount %> lượt đánh giá</div>
+    </div>
+    <p class="price"><%= (product.price || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></p>
+    <p class="desc-text"><%- (product.description || 'Đang cập nhật mô tả.').replace(/\n/g, '<br>') %></p>
+    <p class="meta">
+      <% (product.tags || []).forEach((tag) => { %>
+        <span class="tag-pill"><%= tag %></span>
+      <% }) %>
+    </p>
+    <form method="POST" action="/cart/add" class="detail-form">
+      <input type="hidden" name="productId" value="<%= product._id %>">
+      <% if (product.variants && product.variants.length) { %>
+        <label>
+          Biến thể
+          <select name="variantId">
+            <% product.variants.forEach((variant) => { %>
+              <option value="<%= variant._id %>">
+                <%= variant.variantName %> - <%= (variant.price || product.price || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %> (Kho: <%= variant.stock || 0 %>)
+              </option>
+            <% }) %>
+          </select>
+        </label>
+      <% } %>
+      <label>Số lượng <input type="number" name="quantity" value="1" min="1"></label>
+      <button class="btn btn-primary" type="submit">Thêm vào giỏ hàng</button>
+    </form>
+  </div>
+</section>
+
+<section id="ratings" class="rating-section">
+  <div>
+    <h3>Đánh giá sản phẩm</h3>
+    <p>Điểm trung bình: <strong><%= avgRating || 0 %>/5</strong> từ <%= ratingCount %> lượt.</p>
+    <ul class="rating-breakdown">
+      <% ratingBreakdown.forEach((item) => { %>
+        <li><%= item.score %> ⭐ — <%= item.count %> lượt</li>
+      <% }) %>
+    </ul>
+  </div>
+  <div>
+    <% if (locals.isLoggedIn) { %>
+      <form method="POST" action="/shop/<%= product.slug %>/rating" class="rating-form">
+        <label>
+          Chọn số sao
+          <select name="rating">
+            <% [5,4,3,2,1].forEach((score) => { %>
+              <option value="<%= score %>" <%= userRating === score ? 'selected' : '' %>><%= score %> sao</option>
+            <% }) %>
+          </select>
+        </label>
+        <label>
+          Ghi chú
+          <textarea name="ratingNote" rows="3" placeholder="Chia sẻ thêm cảm nhận (không bắt buộc)"></textarea>
+        </label>
+        <button class="btn btn-secondary" type="submit">Gửi đánh giá</button>
+      </form>
+    <% } else { %>
+      <p>Vui lòng <a href="/auth/login?next=/shop/<%= product.slug %>#ratings">đăng nhập</a> để đánh giá sao.</p>
+    <% } %>
+  </div>
+</section>
+
+<section id="comments" class="comments-section">
+  <h3>Bình luận</h3>
+  <% if (!comments.length) { %>
+    <p style="color:var(--muted)">Hãy là người đầu tiên bình luận.</p>
+  <% } else { %>
+    <div class="comment-list">
+      <% comments.forEach((comment) => { %>
+        <article class="comment-card">
+          <header>
+            <strong><%= comment.name %></strong>
+            <span><%= new Date(comment.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></span>
+          </header>
+          <p><%= comment.content %></p>
+        </article>
+      <% }) %>
+    </div>
+  <% } %>
+  <form method="POST" action="/shop/<%= product.slug %>/comments" class="comment-form">
+    <div class="form-grid">
+      <label>Họ tên<input type="text" name="name" required></label>
+      <label>Email<input type="email" name="email" placeholder="Tùy chọn"></label>
+    </div>
+    <label>Nội dung<textarea name="content" rows="4" required></textarea></label>
+    <button class="btn btn-primary" type="submit">Gửi bình luận</button>
+  </form>
+</section>
+
+<section class="related-products">
+  <h3>Sản phẩm tương tự</h3>
+  <div class="product-grid">
+    <% if (!related.length) { %>
+      <p style="color:var(--muted)">Chưa có sản phẩm liên quan.</p>
+    <% } %>
+    <% related.forEach((item) => { %>
+      <article class="product-card">
+        <a href="/shop/<%= item.slug %>">
+          <img src="<%= Array.isArray(item.img) && item.img.length ? item.img[0] : '/images/default-plant.jpg' %>" alt="<%= item.name %>">
+        </a>
+        <div class="product-card__body">
+          <h4><a href="/shop/<%= item.slug %>"><%= item.name %></a></h4>
+          <p class="price"><%= (item.price || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></p>
+        </div>
+      </article>
+    <% }) %>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>

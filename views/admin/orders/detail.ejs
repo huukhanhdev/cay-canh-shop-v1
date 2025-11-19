@@ -1,0 +1,81 @@
+<%- include('../../partials/header', { title }) %>
+
+<section class="admin-header">
+  <div>
+    <h2>Đơn hàng #<%= order._id.toString().slice(-6) %></h2>
+    <p>Quản lý trạng thái và điểm thưởng.</p>
+  </div>
+  <a class="btn btn-secondary" href="/admin/orders">← Danh sách</a>
+</section>
+
+<% if (typeof msg !== 'undefined' && msg === 'invalid_status') { %>
+  <p class="alert alert-error">Trạng thái không hợp lệ.</p>
+<% } else if (typeof msg !== 'undefined' && msg === 'error') { %>
+  <p class="alert alert-error">Không thể cập nhật đơn hàng. Vui lòng thử lại.</p>
+<% } else if (typeof msg !== 'undefined' && msg === 'updated') { %>
+  <p class="alert alert-success">Đã cập nhật trạng thái đơn hàng.</p>
+<% } %>
+
+<div class="order-detail">
+  <section class="order-card">
+    <h3>Thông tin đơn hàng</h3>
+    <p><strong>Khách hàng:</strong> <%= order.userID ? (order.userID.fullName || order.userID.email) : 'N/A' %></p>
+    <p><strong>Email:</strong> <%= order.userID ? order.userID.email : 'N/A' %></p>
+    <p><strong>Ngày đặt:</strong> <%= new Date(order.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></p>
+    <p><strong>Tổng tiền:</strong> <%= (order.totalPrice || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></p>
+    <p><strong>Điểm thưởng sẽ nhận:</strong> <%= order.pointEarned || 0 %></p>
+  </section>
+
+  <section class="order-card">
+    <h3>Trạng thái</h3>
+    <form method="POST" action="/admin/orders/<%= order._id %>/status">
+      <select name="status" required>
+        <% statuses.forEach((s) => { %>
+          <option value="<%= s %>" <%= order.status === s ? 'selected' : '' %>><%= s %></option>
+        <% }) %>
+      </select>
+      <button class="btn btn-primary" type="submit">Cập nhật</button>
+    </form>
+  </section>
+
+  <section class="order-card">
+    <h3>Địa chỉ giao hàng</h3>
+    <p><%= order.address?.street %>, <%= order.address?.district %>, <%= order.address?.city %></p>
+  </section>
+
+  <% if (order.status === 'canceled') { %>
+    <section class="order-card">
+      <h3>Lý do hủy</h3>
+      <p><strong>Nội dung:</strong> <%= order.cancelReason || 'Không có' %></p>
+      <% if (order.canceledAt) { %>
+        <p><strong>Thời gian hủy:</strong> <%= new Date(order.canceledAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></p>
+      <% } %>
+    </section>
+  <% } %>
+
+  <section class="order-card">
+    <h3>Sản phẩm</h3>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Sản phẩm</th>
+          <th>Số lượng</th>
+          <th>Giá</th>
+          <th>Tạm tính</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% order.items.forEach((item) => { %>
+          <tr>
+            <td><%= item.productName %></td>
+            <td><%= item.quantity %></td>
+            <td><%= (item.price || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
+            <td><%= (item.subTotal || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<%- include('../../partials/footer') %>

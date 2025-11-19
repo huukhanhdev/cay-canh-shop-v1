@@ -1,0 +1,37 @@
+<%- include('partials/header', { title: (typeof title !== 'undefined' ? title : 'Xác thực OTP') }) %>
+
+<h2>Xác thực OTP</h2>
+
+<% if (typeof error !== 'undefined' ? error : locals.error) { %>
+  <p style="color:red"><%= (typeof error !== 'undefined' ? error : locals.error) %></p>
+<% } %>
+
+<% if (typeof info !== 'undefined' ? info : locals.info)  { %>
+  <p style="color:green"><%= (typeof info !== 'undefined' ? info : locals.info) %></p>
+<% } %>
+
+<form method="POST" action="/auth/verify-otp">
+  <input type="hidden" name="purpose" value="<%= typeof purpose !== 'undefined' ? purpose : (locals.purpose || 'register') %>">
+  <div>
+    <label>Email</label>
+    <input name="email" type="email" required
+           value="<%= typeof email !== 'undefined' ? email : (locals.email || '') %>">
+  </div>
+  <div>
+    <label>Mã OTP</label>
+    <input name="code" type="text" maxlength="6" required>
+  </div>
+  <button type="submit">Xác thực</button>
+</form>
+
+<%
+  const currentPurpose = typeof purpose !== 'undefined'
+    ? purpose
+    : (locals.purpose || 'register');
+  const resendLink = currentPurpose === 'reset' ? '/auth/forgot' : '/auth/register';
+%>
+<p style="margin-top:8px">
+  <a href="<%= resendLink %>">Gửi lại OTP</a>
+</p>
+
+<%- include('partials/footer') %>

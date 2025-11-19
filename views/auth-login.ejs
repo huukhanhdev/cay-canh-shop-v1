@@ -1,0 +1,42 @@
+<%- include('partials/header', { title: 'Đăng nhập' }) %>
+
+<h2>Đăng nhập</h2>
+
+<% if (locals.msg === 'logout') { %>
+  <p style="color:green">Đã đăng xuất.</p>
+<% } else if (locals.msg === 'register_ok') { %>
+  <p style="color:green">Tạo tài khoản thành công. Vui lòng đăng nhập.</p>
+<% } else if (locals.msg === 'reset_ok') { %>
+  <p style="color:green">Mật khẩu đã được cập nhật. Bạn có thể đăng nhập ngay.</p>
+<% } else if (locals.msg === 'otp_required') { %>
+  <p style="color:#c55">Vui lòng xác thực OTP trước khi tiếp tục.</p>
+<% } %>
+
+<% if ((typeof error !== 'undefined' ? error : locals.error)) { %>
+  <p style="color:red"><%= (typeof error !== 'undefined' ? error : locals.error) %></p>
+<% } %>
+
+<form method="POST" action="/auth/login">
+  <input type="hidden" name="next" value="<%= typeof next !== 'undefined' ? next : (locals.next || '') %>">
+  <div>
+    <label>Email</label>
+    <input type="email" name="email" required />
+  </div>
+  <div>
+    <label>Mật khẩu</label>
+    <input type="password" name="password" required />
+  </div>
+  <button type="submit">Đăng nhập</button>
+</form>
+
+<% if (locals.googleAuthEnabled) { %>
+  <div class="oauth-buttons">
+    <a class="btn btn-google" href="/auth/google">Đăng nhập bằng Google</a>
+  </div>
+<% } %>
+
+<p style="margin-top:8px">
+  <a href="/auth/forgot">Quên mật khẩu?</a>
+</p>
+
+<%- include('partials/footer') %>

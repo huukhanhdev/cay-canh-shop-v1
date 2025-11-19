@@ -1,0 +1,9 @@
+<%- include('partials/header', { title }) %>
+<h2>Đặt lại mật khẩu</h2>
+<% if (error) { %><p style="color:red"><%= error %></p><% } %>
+<form method="POST" action="/auth/reset">
+  <label>Email</label><input name="email" type="email" value="<%= email %>" required>
+  <label>Mật khẩu mới</label><input name="password" type="password" minlength="6" required>
+  <button>Lưu</button>
+</form>
+<%- include('partials/footer') %>

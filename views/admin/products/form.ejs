@@ -1,0 +1,149 @@
+<%- include('../../partials/header', { title }) %>
+
+<section class="admin-header">
+  <div>
+    <h2><%= product && product._id ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm' %></h2>
+    <p>Điền thông tin sản phẩm và tải lên hình ảnh.</p>
+  </div>
+  <a class="btn btn-secondary" href="/admin/products">← Quay lại danh sách</a>
+</section>
+
+<% if (typeof error !== 'undefined' && error) { %>
+  <p class="alert alert-error"><%= error %></p>
+<% } %>
+
+<form class="admin-form" method="POST" action="<%= formAction %>" enctype="multipart/form-data">
+  <div class="form-grid">
+    <label>
+      Tên sản phẩm
+      <input type="text" name="name" required value="<%= product?.name || '' %>">
+    </label>
+
+    <label>
+      Slug (tùy chọn)
+      <input type="text" name="slug" value="<%= product?.slug || '' %>">
+      <small>Tự động tạo từ tên nếu để trống.</small>
+    </label>
+
+    <label>
+      Loại sản phẩm
+      <select name="type" id="product-type" required>
+        <option value="indoor" <%= (selectedType || product?.type) === 'indoor' ? 'selected' : '' %>>Cây trong nhà</option>
+        <option value="outdoor" <%= (selectedType || product?.type) === 'outdoor' ? 'selected' : '' %>>Cây ngoài trời</option>
+        <option value="pot" <%= (selectedType || product?.type) === 'pot' ? 'selected' : '' %>>Chậu cây</option>
+      </select>
+    </label>
+
+    <label>
+      Giá bán (VND)
+      <input type="number" name="price" min="0" step="1000" required value="<%= product?.price || '' %>">
+    </label>
+
+    <label>
+      Kho sẵn có
+      <input type="number" name="inStock" min="0" required value="<%= product?.inStock || 0 %>">
+    </label>
+
+    <label>
+      Danh mục
+      <select name="categoryID" id="category-select" required>
+        <option value="">-- Chọn danh mục --</option>
+      </select>
+    </label>
+  </div>
+
+  <label>
+    Mô tả
+    <textarea name="description" rows="5"><%= product?.description || '' %></textarea>
+  </label>
+
+  <% if (product && product.img && product.img.length) { %>
+    <div class="image-existing">
+      <p>Hình ảnh hiện có:</p>
+      <div class="image-grid">
+        <% product.img.forEach((img) => { %>
+          <label class="image-tile">
+            <img src="<%= img %>" alt="">
+            <input type="checkbox" name="removeImages" value="<%= img %>">
+            <span>Xóa ảnh này</span>
+            <input type="hidden" name="currentImages" value="<%= img %>">
+          </label>
+        <% }) %>
+      </div>
+    </div>
+  <% } %>
+
+  <label>
+    Ảnh sản phẩm (tối đa 6)
+    <input type="file" name="images" multiple accept="image/*">
+  </label>
+
+  <label>
+    Thêm ảnh bằng URL (mỗi dòng một URL)
+    <textarea name="imageUrls" rows="3" placeholder="https://example.com/anh1.jpg"></textarea>
+  </label>
+
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit"><%= product && product._id ? 'Cập nhật' : 'Tạo mới' %></button>
+    <a class="btn btn-secondary" href="/admin/products">Hủy</a>
+  </div>
+</form>
+
+<script>
+  (function() {
+    const categoryMap = <%- JSON.stringify(categoriesByType || {}) %>;
+    const typeSelect = document.getElementById('product-type');
+    const categorySelect = document.getElementById('category-select');
+    let selectedCategory = '<%= selectedCategory || (product?.categoryID ? product.categoryID.toString() : '') %>';
+
+    function renderOptions(type) {
+      const bucket = categoryMap[type] || { parents: [], childrenByParent: {} };
+      categorySelect.innerHTML = '<option value="">-- Chọn danh mục --</option>';
+
+      bucket.parents.forEach((parent) => {
+        const children = bucket.childrenByParent[parent.id] || [];
+
+        if (children.length === 0) {
+          const option = document.createElement('option');
+          option.value = parent.id;
+          option.textContent = parent.name;
+          if (selectedCategory === parent.id) option.selected = true;
+          categorySelect.appendChild(option);
+          return;
+        }
+
+        if (selectedCategory === parent.id) {
+          const parentOption = document.createElement('option');
+          parentOption.value = parent.id;
+          parentOption.textContent = parent.name;
+          parentOption.selected = true;
+          categorySelect.appendChild(parentOption);
+        }
+
+        const group = document.createElement('optgroup');
+        group.label = parent.name;
+        children.forEach((child) => {
+          const option = document.createElement('option');
+          option.value = child.id;
+          option.textContent = child.name;
+          if (selectedCategory === child.id) option.selected = true;
+          group.appendChild(option);
+        });
+        categorySelect.appendChild(group);
+      });
+    }
+
+    typeSelect.addEventListener('change', () => {
+      selectedCategory = '';
+      renderOptions(typeSelect.value);
+    });
+
+    categorySelect.addEventListener('change', () => {
+      selectedCategory = categorySelect.value;
+    });
+
+    renderOptions(typeSelect.value);
+  })();
+</script>
+
+<%- include('../../partials/footer') %>

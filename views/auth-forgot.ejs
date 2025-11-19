@@ -1,0 +1,11 @@
+<%- include('partials/header', { title }) %>
+<h2>Quên mật khẩu</h2>
+<% if (error) { %><p style="color:red"><%= error %></p><% } %>
+<% if (locals.msg === 'otp_required') { %>
+  <p style="color:#c55">Bạn cần nhập đúng OTP đã gửi đến email để đặt lại mật khẩu.</p>
+<% } %>
+<form method="POST" action="/auth/forgot">
+  <label>Email</label><input name="email" type="email" required>
+  <button>Gửi OTP</button>
+</form>
+<%- include('partials/footer') %>

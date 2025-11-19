@@ -1,0 +1,15 @@
+<%- include('../partials/header', { title }) %>
+
+<div class="success-card">
+  <h2>🎉 Đặt hàng thành công!</h2>
+  <p>Cám ơn bạn đã tin tưởng Cây Cảnh Shop. Chúng tôi sẽ liên hệ để xác nhận đơn hàng sớm nhất.</p>
+  <% if (orderId) { %>
+    <p>Mã đơn hàng của bạn: <strong><%= orderId %></strong></p>
+  <% } %>
+  <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <a class="btn btn-primary" href="/shop">Tiếp tục mua sắm</a>
+    <a class="btn btn-secondary" href="/orders">Theo dõi đơn hàng</a>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
