@@ -1,0 +1,189 @@
+<%- include('../partials/header', { title: 'Bảng điều khiển' }) %>
+
+<% const statusLabels = { pending: 'Chờ xử lý', preparing: 'Đang chuẩn bị', shipping: 'Đang giao', done: 'Hoàn tất', canceled: 'Đã hủy' }; %>
+
+<section class="dashboard-hero">
+  <div>
+    <p class="eyebrow">Xin chào <%= locals.username || 'Admin' %></p>
+    <h1>Tổng quan hoạt động</h1>
+    <p class="muted">
+      Theo dõi sức khỏe cửa hàng, xử lý đơn hàng nhanh chóng và nắm bắt các đầu việc ưu tiên.
+    </p>
+  </div>
+  <div class="hero-highlight">
+    <p>Doanh thu tháng này</p>
+    <h3><%= Number(stats.monthlyRevenue || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></h3>
+    <p class="muted">
+      <% if (stats.revenueTrend === null) { %>
+        Chưa có dữ liệu tháng trước
+      <% } else { %>
+        <span class="<%= stats.revenueTrend >= 0 ? 'trend-up' : 'trend-down' %>">
+          <%= stats.revenueTrend %>% so với tháng trước
+        </span>
+      <% } %>
+    </p>
+  </div>
+</section>
+
+<% if (error) { %>
+  <p class="alert alert-error"><%= error %></p>
+<% } %>
+
+<section class="dashboard-grid">
+  <article class="stat-card">
+    <p class="muted">Tổng doanh thu</p>
+    <h3><%= Number(stats.totalRevenue || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></h3>
+    <small><%= stats.totalOrders || 0 %> đơn đã xử lý</small>
+  </article>
+  <article class="stat-card">
+    <p class="muted">Giá trị đơn trung bình</p>
+    <h3><%= Number(stats.avgOrderValue || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></h3>
+    <small>Dựa trên các đơn đã hoàn tất</small>
+  </article>
+  <article class="stat-card">
+    <p class="muted">Khách hàng</p>
+    <h3><%= stats.customerCount || 0 %></h3>
+    <small>Khách hàng đã đăng ký</small>
+  </article>
+  <article class="stat-card">
+    <p class="muted">Đơn cần xử lý</p>
+    <h3><%= stats.pendingOrders || 0 %></h3>
+    <small>Tổng đơn chờ, chuẩn bị & giao</small>
+  </article>
+</section>
+
+<section class="dashboard-two-column">
+  <article class="panel">
+    <header>
+      <div>
+        <h2>Trạng thái đơn hàng</h2>
+        <p class="muted">Theo dõi tiến độ fulfillment</p>
+      </div>
+    </header>
+    <ul class="status-list">
+      <% statusBreakdown.forEach((item) => { %>
+        <li>
+          <span><%= item.label %></span>
+          <span class="status-chip status-<%= item.key %>"><%= item.count %></span>
+        </li>
+      <% }) %>
+    </ul>
+  </article>
+
+  <article class="panel">
+    <header>
+      <div>
+        <h2>Sản phẩm bán chạy</h2>
+        <p class="muted">Tính theo số lượng bán ra</p>
+      </div>
+    </header>
+    <% if (!topProducts.length) { %>
+      <p class="muted">Chưa có dữ liệu.</p>
+    <% } else { %>
+      <ol class="top-products">
+        <% topProducts.forEach((product) => { %>
+          <li>
+            <div>
+              <strong><%= product.name %></strong>
+              <p class="muted">
+                <%= Number(product.revenue || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %>
+                · <%= product.quantity %> sản phẩm
+              </p>
+            </div>
+            <% if (product.id) { %>
+              <a class="btn-link" href="/admin/products/<%= product.id %>/edit">Quản lý</a>
+            <% } %>
+          </li>
+        <% }) %>
+      </ol>
+    <% } %>
+  </article>
+</section>
+
+<section class="dashboard-two-column">
+  <article class="panel">
+    <header>
+      <div>
+        <h2>Đơn hàng gần nhất</h2>
+        <p class="muted">6 đơn hàng mới nhất</p>
+      </div>
+    </header>
+    <% if (!recentOrders.length) { %>
+      <p class="muted">Chưa có đơn hàng nào.</p>
+    <% } else { %>
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Mã</th>
+              <th>Khách hàng</th>
+              <th>Giá trị</th>
+              <th>Trạng thái</th>
+              <th>Ngày tạo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% recentOrders.forEach((order) => { %>
+              <tr>
+                <td><strong><%= order._id %></strong></td>
+                <td><%= order.userID ? (order.userID.fullName || order.userID.email) : 'Khách lẻ' %></td>
+                <td><%= Number(order.totalPrice || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
+                <td><span class="status status-<%= order.status %>"><%= statusLabels[order.status] || order.status %></span></td>
+                <td><%= new Date(order.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </article>
+
+  <article class="panel">
+    <header>
+      <div>
+        <h2>Khách hàng & kho</h2>
+        <p class="muted">Thông tin mới nhất</p>
+      </div>
+    </header>
+    <div class="panel-split">
+      <div>
+        <h3>Khách hàng mới</h3>
+        <% if (!latestCustomers.length) { %>
+          <p class="muted">Chưa có dữ liệu.</p>
+        <% } else { %>
+          <ul class="simple-list">
+            <% latestCustomers.forEach((customer) => { %>
+              <li>
+                <strong><%= customer.fullName %></strong>
+                <span class="muted"><%= customer.email %></span>
+              </li>
+            <% }) %>
+          </ul>
+        <% } %>
+      </div>
+      <div>
+        <h3>Cảnh báo tồn kho</h3>
+        <% if (!lowStockProducts.length) { %>
+          <p class="muted">Kho hàng vẫn an toàn.</p>
+        <% } else { %>
+          <ul class="simple-list">
+            <% lowStockProducts.forEach((product) => { %>
+              <li>
+                <strong><%= product.name %></strong>
+                <span class="muted">Còn lại <%= product.inStock %> sản phẩm</span>
+              </li>
+            <% }) %>
+          </ul>
+        <% } %>
+      </div>
+    </div>
+  </article>
+</section>
+
+<%- include('../partials/footer') %>
+
+
+
+
+
+

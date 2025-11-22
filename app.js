@@ -16,6 +16,7 @@ const accountRoutes = require('./routes/accountRoutes');
 const adminProductRoutes = require('./routes/adminProductRoutes');
 const adminOrderRoutes = require('./routes/adminOrderRoutes');
 const adminCustomerRoutes = require('./routes/adminCustomerRoutes');
+const adminDashboardController = require('./controllers/adminDashboardController');
 const Product = require('./models/Product');
 const Category = require('./models/Category');
 const runAllSeeds = require('./helpers/seedData');
@@ -101,6 +102,7 @@ app.use('/checkout', checkoutRoutes);
 app.use('/orders', requireLogin, orderRoutes);
 app.use('/account', requireLogin, accountRoutes);
 
+app.get('/admin/dashboard', requireLogin, requireAdmin, adminDashboardController.overview);
 app.use('/admin/products', requireLogin, requireAdmin, adminProductRoutes);
 app.use('/admin/orders', requireLogin, requireAdmin, adminOrderRoutes);
 app.use('/admin/customers', requireLogin, requireAdmin, adminCustomerRoutes);

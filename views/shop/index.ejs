@@ -59,6 +59,30 @@
       <% }) %>
     </select>
   </label>
+  <% 
+    // Helper function to format tag names with proper Vietnamese diacritics
+    function formatTagName(tag) {
+      const tagMap = {
+        'Cay Canh Van Phong': 'Cây Cảnh Văn Phòng',
+        'Cay Nhiet Doi': 'Cây Nhiệt Đới',
+        'Cay Thuy Sinh': 'Cây Thủy Sinh',
+        'Cay Canh Mini': 'Cây Cảnh Mini',
+        'Cay Che Phu Nen': 'Cây Che Phủ Nền',
+        'Cay Leo Dan': 'Cây Leo Dàn',
+        'Cay Tam Trung': 'Cây Tầm Trung',
+        'Cay Than Dot': 'Cây Thân Đốt',
+        'Chau Dat Nung': 'Chậu Đất Nung',
+        'Chau Gom Su': 'Chậu Gốm Sứ',
+        'Kieu Chau Vuong': 'Kiểu Chậu Vuông',
+        'Cay Trong Nha': 'Cây Trong Nhà',
+        'Cay Ngoai Troi': 'Cây Ngoài Trời',
+        'Chau Cay': 'Chậu Cây',
+        'Chau Trang Tri': 'Chậu Trang Trí',
+        'Cay Noi That': 'Cây Nội Thất'
+      };
+      return tagMap[tag] || tag;
+    }
+  %>
   <% if (availableTags.length || (filtersState.tags && filtersState.tags.length)) { 
        const tagPool = Array.from(new Set([...(filtersState.tags || []), ...availableTags])).slice(0, 12);
   %>
@@ -67,7 +91,7 @@
       <% tagPool.forEach((tag) => { %>
         <label>
           <input type="checkbox" name="tags" value="<%= tag %>" <%= filtersState.tags.includes(tag) ? 'checked' : '' %>>
-          <span><%= tag %></span>
+          <span><%= formatTagName(tag) %></span>
         </label>
       <% }) %>
     </div>
