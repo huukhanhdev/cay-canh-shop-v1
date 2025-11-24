@@ -1,0 +1,52 @@
+<%- include('../../partials/header', { title }) %>
+
+<section>
+  <h2>Quản lý bình luận</h2>
+  <% if (success) { %>
+    <p class="alert alert-success">Thao tác thành công.</p>
+  <% } %>
+  <% if (error) { %>
+    <p class="alert alert-error"><%= error %></p>
+  <% } %>
+
+  <% if (!comments.length) { %>
+    <p class="muted">Chưa có bình luận nào.</p>
+  <% } else { %>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Sản phẩm</th>
+            <th>Người gửi</th>
+            <th>Nội dung</th>
+            <th>Ngày</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% comments.forEach((c) => { %>
+            <tr>
+              <td>
+                <% if (c.product) { %>
+                  <a href="/shop/<%= c.product.slug %>"><%= c.product.name %></a>
+                <% } else { %>
+                  <em>Không tìm thấy sản phẩm</em>
+                <% } %>
+              </td>
+              <td><strong><%= c.name %></strong><br><small><%= c.email || '' %></small></td>
+              <td><%= c.content %></td>
+              <td><%= new Date(c.createdAt).toLocaleString('vi-VN') %></td>
+              <td>
+                <form method="POST" action="/admin/comments/<%= c._id %>/delete" onsubmit="return confirm('Xóa bình luận này?');">
+                  <button class="btn btn-danger" type="submit">Xóa</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
+<%- include('../../partials/footer') %>

@@ -16,6 +16,7 @@ const accountRoutes = require('./routes/accountRoutes');
 const adminProductRoutes = require('./routes/adminProductRoutes');
 const adminOrderRoutes = require('./routes/adminOrderRoutes');
 const adminCustomerRoutes = require('./routes/adminCustomerRoutes');
+const adminCommentRoutes = require('./routes/adminCommentRoutes');
 const adminDashboardController = require('./controllers/adminDashboardController');
 const Product = require('./models/Product');
 const Category = require('./models/Category');
@@ -57,6 +58,10 @@ const FEATURED_CATEGORY_SLUGS = [
   { slug: 'cay-nhiet-doi', title: 'Cây nhiệt đới' },
   { slug: 'chau-dat-nung', title: 'Chậu đất nung' },
 ];
+
+const http = require('http');
+const { Server } = require('socket.io');
+const { setIO } = require('./helpers/socket');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -106,6 +111,7 @@ app.get('/admin/dashboard', requireLogin, requireAdmin, adminDashboardController
 app.use('/admin/products', requireLogin, requireAdmin, adminProductRoutes);
 app.use('/admin/orders', requireLogin, requireAdmin, adminOrderRoutes);
 app.use('/admin/customers', requireLogin, requireAdmin, adminCustomerRoutes);
+app.use('/admin/comments', requireLogin, requireAdmin, adminCommentRoutes);
 
 // landing page
 app.get('/', async (_req, res) => {
@@ -162,7 +168,17 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/caycanhsh
     console.log('✅ MongoDB connected');
     await runAllSeeds();
     await normalizeProductTypes();
-    app.listen(PORT, () => console.log(`🚀 http://localhost:${PORT}`));
+
+    const server = http.createServer(app);
+    const io = new Server(server, { cors: { origin: '*' } });
+    setIO(io);
+
+    io.on('connection', (socket) => {
+      // optional: handle room joins in future
+      // console.log('Socket connected:', socket.id);
+    });
+
+    server.listen(PORT, () => console.log(`🚀 http://localhost:${PORT}`));
   })
   .catch((err) => console.error('Mongo error:', err.message));
 

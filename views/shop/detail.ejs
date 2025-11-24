@@ -14,8 +14,8 @@
     <p class="meta">Thương hiệu: <strong><%= product.brand || 'Cây Cảnh Shop' %></strong></p>
     <p class="meta">Danh mục: <%= product.categoryID ? product.categoryID.name : '' %></p>
     <div class="rating-summary">
-      <div class="rating-score"><%= avgRating || 0 %><span>/5</span></div>
-      <div><%= ratingCount %> lượt đánh giá</div>
+      <div class="rating-score" id="avgRating"><%= avgRating || 0 %><span>/5</span></div>
+      <div id="ratingCount"><%= ratingCount %> lượt đánh giá</div>
     </div>
     <p class="price"><%= (product.price || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></p>
     <p class="desc-text"><%- (product.description || 'Đang cập nhật mô tả.').replace(/\n/g, '<br>') %></p>
@@ -79,10 +79,11 @@
 
 <section id="comments" class="comments-section">
   <h3>Bình luận</h3>
-  <% if (!comments.length) { %>
-    <p style="color:var(--muted)">Hãy là người đầu tiên bình luận.</p>
-  <% } else { %>
-    <div class="comment-list">
+  <div id="commentsContainer">
+    <% if (!comments.length) { %>
+      <p id="noComments" style="color:var(--muted)">Hãy là người đầu tiên bình luận.</p>
+    <% } %>
+    <div class="comment-list" id="commentList">
       <% comments.forEach((comment) => { %>
         <article class="comment-card">
           <header>
@@ -93,7 +94,7 @@
         </article>
       <% }) %>
     </div>
-  <% } %>
+  </div>
   <form method="POST" action="/shop/<%= product.slug %>/comments" class="comment-form">
     <div class="form-grid">
       <label>Họ tên<input type="text" name="name" required></label>
@@ -125,3 +126,61 @@
 </section>
 
 <%- include('../partials/footer') %>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  (function(){
+    try {
+      const socket = io();
+      const productSlug = <%- JSON.stringify(product.slug) %>;
+      console.debug('[socket] connecting for product:', productSlug);
+
+      socket.on('connect', () => console.debug('[socket] connected', socket.id));
+      socket.on('connect_error', (err) => console.warn('[socket] connect_error', err));
+      socket.on('newComment', (data) => {
+        console.debug('[socket] newComment', data);
+        if (!data || data.productSlug !== productSlug) return;
+        const comment = data.comment;
+        const list = document.getElementById('commentList');
+        const noComments = document.getElementById('noComments');
+        if (noComments) noComments.remove();
+
+        const article = document.createElement('article');
+        article.className = 'comment-card';
+        const header = document.createElement('header');
+        const strong = document.createElement('strong');
+        strong.textContent = comment.name || 'Khách';
+        const span = document.createElement('span');
+        span.textContent = new Date(comment.createdAt).toLocaleString('vi-VN');
+        header.appendChild(strong);
+        header.appendChild(span);
+        const p = document.createElement('p');
+        p.textContent = comment.content || '';
+        article.appendChild(header);
+        article.appendChild(p);
+        if (list) list.insertBefore(article, list.firstChild);
+      });
+
+      socket.on('newRating', (data) => {
+        if (!data || data.productSlug !== productSlug) return;
+        const avg = document.getElementById('avgRating');
+        const count = document.getElementById('ratingCount');
+        if (avg) avg.innerHTML = (data.avgRating || 0) + '<span>/5</span>';
+        if (count) count.textContent = (data.ratingCount || 0) + ' lượt đánh giá';
+        // update breakdown list if present
+        const breakdownList = document.querySelector('.rating-breakdown');
+        if (breakdownList && Array.isArray(data.ratingBreakdown)) {
+          breakdownList.innerHTML = '';
+          data.ratingBreakdown.forEach((b) => {
+            const li = document.createElement('li');
+            li.textContent = b.score + ' ⭐ — ' + b.count + ' lượt';
+            breakdownList.appendChild(li);
+          });
+        }
+      });
+    } catch (e) {
+      // ignore errors
+      console.warn('Realtime socket failed', e);
+    }
+  })();
+</script>

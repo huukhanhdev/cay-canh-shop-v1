@@ -3,7 +3,7 @@ const Category = require("../models/Category");
 
 const BRAND_BY_TYPE = {
   indoor: "Leafy Corner",
-  outdoor: "Evergreen Estates",
+  outdoor: "Cây Cảnh Shop",
   pot: "Terracotta Studio",
 };
 

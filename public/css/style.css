@@ -11,6 +11,8 @@
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
 }
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+
 * {
   box-sizing: border-box;
 }
@@ -797,6 +799,141 @@ footer {
   font-size: 0.9rem;
   margin-bottom: 8px;
   color: var(--muted);
+}
+
+/* === UI/UX Enhancements === */
+/* Provide improved spacing, visual hierarchy, and responsiveness */
+
+/* Wider container for large screens */
+main {
+  max-width: 1200px;
+  margin: 40px auto;
+}
+
+/* Tidy header: make logo area larger and nav clearer */
+header {
+  padding: 18px 32px;
+}
+
+header > a {
+  font-size: 1.35rem;
+  color: var(--primary-dark);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* subtle brand mark circle */
+header > a::before {
+  content: '';
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Nav buttons look like pills */
+header nav a {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+/* Primary call-to-action in header */
+.nav-cta {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff !important;
+  box-shadow: 0 8px 20px rgba(47,111,79,0.14);
+}
+
+/* Product card refinements */
+.product-card {
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.product-card__body {
+  padding: 18px;
+}
+
+.product-card .price {
+  color: var(--primary);
+  font-size: 1.05rem;
+}
+
+/* Brand pill inside product card */
+.product-card .brand-pill {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(47,111,79,0.08);
+  color: var(--primary-dark);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+/* Improve CTA buttons in cards */
+.product-card__body .btn-primary {
+  padding: 10px 16px;
+  border-radius: 12px;
+  box-shadow: 0 10px 20px rgba(47,111,79,0.12);
+}
+
+/* Make images feel lighter with rounded corners */
+.product-card img {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* Improve forms and inputs */
+input, select, textarea {
+  font-family: inherit;
+}
+
+/* Footer improvements */
+footer {
+  padding: 20px 24px;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+/* Responsive tweaks for small screens */
+@media (max-width: 880px) {
+  .shop-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .shop-sidebar {
+    position: static;
+    top: auto;
+  }
+
+  header {
+    padding: 12px 16px;
+  }
+
+  header > a::before { display: none; }
+
+  .shop-controls label { min-width: auto; flex: 1 1 100%; }
+}
+
+/* Small animation for page-level elements */
+.fade-in-up {
+  transform: translateY(6px);
+  opacity: 0;
+  animation: fadeUp 420ms ease forwards;
+}
+
+@keyframes fadeUp {
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* accessibility: focus outline for keyboard users */
+a:focus, button:focus, input:focus, select:focus {
+  outline: 3px solid rgba(47,111,79,0.14);
+  outline-offset: 2px;
 }
 
 .comment-card p {

@@ -2,6 +2,7 @@ const Product = require('../models/Product');
 const Category = require('../models/Category');
 const Comment = require('../models/Comment');
 const Review = require('../models/Review');
+const { getIO } = require('../helpers/socket');
 
 const PAGE_SIZE = 6;
 const SORT_OPTIONS = {
@@ -246,12 +247,41 @@ exports.addComment = async (req, res) => {
     const product = await Product.findOne({ slug: req.params.slug }).select('_id slug').lean();
     if (!product) return res.redirect('/shop');
 
-    await Comment.create({
+    const created = await Comment.create({
       productID: product._id,
       name: name.trim(),
       email: email.trim(),
       content: content.trim(),
     });
+
+    // verify persistence
+    try {
+      const saved = await Comment.findById(created._id).lean();
+      console.log('[comments] inserted', String(created._id), 'saved?', !!saved);
+      if (!saved) {
+        console.warn('[comments] created but not found after insert:', created._id);
+      }
+    } catch (err) {
+      console.error('[comments] verify error', err);
+    }
+
+    // emit realtime event for new comment
+    const io = getIO();
+    if (io) {
+      console.log('[socket] emitting newComment for', product.slug, 'id', String(created._id));
+      io.emit('newComment', {
+        productSlug: product.slug,
+        comment: {
+          _id: created._id,
+          name: created.name,
+          content: created.content,
+          createdAt: created.createdAt,
+        },
+      });
+    } else {
+      console.log('[socket] no io instance available to emit newComment');
+    }
+
     return res.redirect(`/shop/${product.slug}#comments`);
   } catch (err) {
     console.error('Add comment error:', err);
@@ -300,6 +330,22 @@ exports.addRating = async (req, res) => {
         { _id: product._id },
         { $set: { avgRating: Number(stats[0].avgRating.toFixed(1)), reviewCount: stats[0].count } }
       );
+    }
+
+    // emit realtime event for rating update
+    const io = getIO();
+    if (io) {
+      const ratingCount = stats.length ? stats[0].count : 0;
+      const avgRating = stats.length ? Number(stats[0].avgRating.toFixed(1)) : 0;
+      const allReviews = await Review.find({ productID: product._id }).lean();
+      const ratingBreakdown = [5,4,3,2,1].map((score) => ({ score, count: allReviews.filter((r) => r.rating === score).length }));
+
+      io.emit('newRating', {
+        productSlug: product.slug,
+        avgRating,
+        ratingCount,
+        ratingBreakdown,
+      });
     }
 
     return res.redirect(`/shop/${product.slug}#ratings`);
