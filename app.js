@@ -17,6 +17,7 @@ const adminProductRoutes = require('./routes/adminProductRoutes');
 const adminOrderRoutes = require('./routes/adminOrderRoutes');
 const adminCustomerRoutes = require('./routes/adminCustomerRoutes');
 const adminCommentRoutes = require('./routes/adminCommentRoutes');
+const adminCouponRoutes = require('./routes/adminCouponRoutes');
 const adminDashboardController = require('./controllers/adminDashboardController');
 const Product = require('./models/Product');
 const Category = require('./models/Category');
@@ -112,6 +113,7 @@ app.use('/admin/products', requireLogin, requireAdmin, adminProductRoutes);
 app.use('/admin/orders', requireLogin, requireAdmin, adminOrderRoutes);
 app.use('/admin/customers', requireLogin, requireAdmin, adminCustomerRoutes);
 app.use('/admin/comments', requireLogin, requireAdmin, adminCommentRoutes);
+app.use('/admin/coupons', requireLogin, requireAdmin, adminCouponRoutes);
 
 // landing page
 app.get('/', async (_req, res) => {

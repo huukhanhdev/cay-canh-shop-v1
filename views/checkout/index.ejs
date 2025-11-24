@@ -1,6 +1,6 @@
 <%- include('../partials/header', { title }) %>
 
-<h2>Thông tin thanh toán</h2>
+<h2>Thanh toán</h2>
 
 <% if (error) { %>
   <p class="alert alert-error"><%= error %></p>
@@ -13,7 +13,16 @@
   : (typeof savedAddresses !== 'undefined' && Array.isArray(savedAddresses) ? savedAddresses : []); %>
 
 <div class="checkout-layout">
-  <form class="checkout-form" method="POST" action="/checkout">
+  <form class="checkout-form" method="POST" action="/checkout" id="checkoutForm">
+    <div class="step-indicator" style="margin-bottom:12px">
+      <span id="stepIndicator1"><strong>1.</strong> Thông tin giao hàng</span>
+      <span>→</span>
+      <span id="stepIndicator2"><strong>2.</strong> Thanh toán</span>
+      <span>→</span>
+      <span id="stepIndicator3"><strong>3.</strong> Xác nhận</span>
+    </div>
+
+    <section id="step-shipping">
     <% if (!isLoggedIn) { %>
       <label>Email
         <input name="email" type="email" value="<%= formData.email || '' %>" required>
@@ -56,7 +65,28 @@
       </label>
     </div>
     <label>Ghi chú thêm<textarea name="note" rows="3"><%= formData.note || '' %></textarea></label>
-    <button class="btn btn-primary" type="submit">Đặt hàng</button>
+    <div class="form-actions">
+      <button class="btn btn-primary" id="btnToPayment" type="button">Tiếp tục</button>
+    </div>
+    </section>
+
+    <section id="step-payment" style="display:none">
+      <h3>Phương thức thanh toán</h3>
+      <label><input type="radio" name="paymentMethod" value="cod" checked> Thanh toán khi nhận hàng (COD)</label>
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btnBackToShipping" type="button">Quay lại</button>
+        <button class="btn btn-primary" id="btnToReview" type="button">Tiếp tục</button>
+      </div>
+    </section>
+
+    <section id="step-review" style="display:none">
+      <h3>Kiểm tra và xác nhận</h3>
+      <p>Vui lòng kiểm tra lại thông tin và tổng tiền ở bên phải trước khi đặt hàng.</p>
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btnBackToPayment" type="button">Quay lại</button>
+        <button class="btn btn-primary" type="submit">Đặt hàng</button>
+      </div>
+    </section>
   </form>
 
   <aside class="checkout-summary">
@@ -72,11 +102,101 @@
         </li>
       <% }) %>
     </ul>
-    <p><strong>Tổng:</strong> <%= cart.totalPrice.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></p>
+    <div class="coupon-box">
+      <label>Mã giảm giá</label>
+      <div style="display:flex; gap:8px; align-items:center">
+        <input id="couponInput" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase" />
+        <button class="btn btn-secondary" id="applyCouponBtn" type="button">Áp dụng</button>
+        <% if (appliedCoupon) { %>
+          <button class="btn btn-danger" id="removeCouponBtn" type="button">Bỏ mã</button>
+        <% } %>
+      </div>
+      <div id="couponMsg" class="form-hint" style="color:var(--muted)"></div>
+      <% if (appliedCoupon) { %>
+        <p class="form-hint">Đang áp dụng: <strong><%= appliedCoupon.code %></strong></p>
+      <% } %>
+    </div>
+
+    <div class="summary-line"><strong>Tạm tính:</strong> <span id="summary-subtotal"><%= (summary?.subtotal || cart.totalPrice).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
+    <div class="summary-line"><strong>Giảm:</strong> <span id="summary-discount">-<%= (summary?.discount || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
+    <div class="summary-line"><strong>Thuế (VAT):</strong> <span id="summary-tax"><%= (summary?.tax || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
+    <div class="summary-line"><strong>Phí vận chuyển:</strong> <span id="summary-shipping"><%= (summary?.shipping || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
+    <div class="summary-line total"><strong>Tổng cộng:</strong> <span id="summary-total"><%= (summary?.total || cart.totalPrice).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
   </aside>
 </div>
 
 <%- include('../partials/location-script', { locations }) %>
+<script>
+  (function() {
+    // Step navigation
+    const stepShipping = document.getElementById('step-shipping');
+    const stepPayment = document.getElementById('step-payment');
+    const stepReview = document.getElementById('step-review');
+    const btnToPayment = document.getElementById('btnToPayment');
+    const btnBackToShipping = document.getElementById('btnBackToShipping');
+    const btnToReview = document.getElementById('btnToReview');
+    const btnBackToPayment = document.getElementById('btnBackToPayment');
+    const ind1 = document.getElementById('stepIndicator1');
+    const ind2 = document.getElementById('stepIndicator2');
+    const ind3 = document.getElementById('stepIndicator3');
+
+    function showStep(step) {
+      stepShipping.style.display = step === 1 ? '' : 'none';
+      stepPayment.style.display = step === 2 ? '' : 'none';
+      stepReview.style.display = step === 3 ? '' : 'none';
+      ind1.style.textDecoration = step === 1 ? 'underline' : '';
+      ind2.style.textDecoration = step === 2 ? 'underline' : '';
+      ind3.style.textDecoration = step === 3 ? 'underline' : '';
+    }
+    if (btnToPayment) btnToPayment.addEventListener('click', () => showStep(2));
+    if (btnBackToShipping) btnBackToShipping.addEventListener('click', () => showStep(1));
+    if (btnToReview) btnToReview.addEventListener('click', () => showStep(3));
+    if (btnBackToPayment) btnBackToPayment.addEventListener('click', () => showStep(2));
+
+    // Coupon handling
+    const currency = (v) => (v || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+    function updateSummary(summary) {
+      const el = (id) => document.getElementById(id);
+      if (el('summary-subtotal')) el('summary-subtotal').textContent = currency(summary.subtotal);
+      if (el('summary-discount')) el('summary-discount').textContent = '-' + currency(summary.discount);
+      if (el('summary-tax')) el('summary-tax').textContent = currency(summary.tax);
+      if (el('summary-shipping')) el('summary-shipping').textContent = currency(summary.shipping);
+      if (el('summary-total')) el('summary-total').textContent = currency(summary.total);
+    }
+
+    const couponInput = document.getElementById('couponInput');
+    const applyBtn = document.getElementById('applyCouponBtn');
+    const removeBtn = document.getElementById('removeCouponBtn');
+    const couponMsg = document.getElementById('couponMsg');
+    if (applyBtn) {
+      applyBtn.addEventListener('click', () => {
+        const code = (couponInput && couponInput.value || '').trim().toUpperCase();
+        if (!code) { couponMsg.textContent = 'Nhập mã 5 ký tự'; return; }
+        const body = new URLSearchParams(); body.set('code', code);
+        fetch('/checkout/apply-coupon', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() })
+          .then(r => r.json())
+          .then((res) => {
+            if (!res.ok) { couponMsg.textContent = res.error || 'Mã không hợp lệ'; return; }
+            updateSummary(res.summary);
+            couponMsg.textContent = 'Áp dụng mã thành công: ' + (res.appliedCoupon && res.appliedCoupon.code || code);
+          })
+          .catch(() => { couponMsg.textContent = 'Có lỗi xảy ra'; });
+      });
+    }
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        fetch('/checkout/remove-coupon', { method: 'POST' })
+          .then(r => r.json())
+          .then((res) => {
+            if (!res.ok) { couponMsg.textContent = res.error || 'Không thể bỏ mã'; return; }
+            updateSummary(res.summary);
+            couponMsg.textContent = 'Đã bỏ mã giảm giá.';
+          })
+          .catch(() => { couponMsg.textContent = 'Có lỗi xảy ra'; });
+      });
+    }
+  })();
+</script>
 <% if (isLoggedIn && savedAddressList.length) { %>
   <script>
     (function () {

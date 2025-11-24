@@ -2,7 +2,9 @@ const Cart = require('../models/Cart');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const Coupon = require('../models/Coupon');
 const { locations, normalizeLocation } = require('../helpers/location');
+const { computeSummary } = require('../utils/pricing');
 
 function normalizeEmail(email = '') {
   return email.trim().toLowerCase();
@@ -154,9 +156,14 @@ exports.viewCart = async (req, res) => {
     cart = ensureGuestCart(req);
   }
 
+  const appliedDiscount = req.session?.checkoutCoupon?.discount || 0;
+  const summary = computeSummary(cart.totalPrice || 0, appliedDiscount);
+
   res.render('cart/index', {
     title: 'Giỏ hàng',
     cart,
+    summary,
+    appliedCoupon: req.session?.checkoutCoupon || null,
     message: req.query.msg || null,
   });
 };
@@ -292,6 +299,169 @@ exports.updateItem = async (req, res) => {
   }
 };
 
+// JSON APIs for realtime cart updates
+exports.apiAddItem = async (req, res) => {
+  const { productId, quantity = 1, variantId = '' } = req.body;
+  if (!productId) return res.status(400).json({ error: 'Thiếu sản phẩm' });
+
+  try {
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+
+    const qty = Math.max(1, Number(quantity) || 1);
+    const { variant, price, variantId: resolvedVariantId } = buildVariantPayload(product, variantId);
+    const productImg = Array.isArray(product.img) ? product.img[0] : product.img;
+    const variantPayload = variant
+      ? {
+          variantName: variant.variantName,
+          sku: variant.sku,
+          color: variant.color,
+          size: variant.size,
+          material: variant.material,
+          price: variant.price,
+          variantImg: variant.variantImg || productImg,
+        }
+      : {};
+
+    let cart;
+    if (req.session?.user) {
+      cart = await getOrCreateCart(req.session.user.id);
+      const existing = cart.items.find((item) =>
+        cartItemMatches(item, productId, resolvedVariantId)
+      );
+
+      if (existing) {
+        existing.quantity += qty;
+        existing.price = price;
+        existing.subTotal = existing.quantity * price;
+      } else {
+        cart.items.push({
+          productID: product._id,
+          productName: product.name,
+          productImg,
+          type: product.type,
+          price,
+          quantity: qty,
+          subTotal: price * qty,
+          variantId: resolvedVariantId,
+          variant: variantPayload,
+        });
+      }
+
+      recalc(cart);
+      await cart.save();
+    } else {
+      cart = ensureGuestCart(req);
+      const existing = cart.items.find(
+        (item) => item.productID === productId && (item.variantId || '') === (resolvedVariantId || '')
+      );
+      if (existing) {
+        existing.quantity += qty;
+        existing.price = price;
+        existing.subTotal = existing.quantity * price;
+      } else {
+        cart.items.push({
+          productID: product._id.toString(),
+          productName: product.name,
+          productImg,
+          type: product.type,
+          price,
+          quantity: qty,
+          subTotal: price * qty,
+          variantId: resolvedVariantId,
+          variant: variantPayload,
+        });
+      }
+      recalc(cart);
+    }
+
+    const appliedDiscount = req.session?.checkoutCoupon?.discount || 0;
+    const summary = computeSummary(cart.totalPrice || 0, appliedDiscount);
+    return res.json({
+      ok: true,
+      cart: { items: cart.items, totalPrice: cart.totalPrice },
+      summary,
+    });
+  } catch (err) {
+    console.error('apiAddItem error:', err);
+    return res.status(500).json({ error: 'Không thể thêm sản phẩm' });
+  }
+};
+
+exports.apiUpdateItem = async (req, res) => {
+  const { productId, quantity = 1, variantId = '' } = req.body;
+  try {
+    const qty = Math.max(0, Number(quantity) || 0);
+    const normalizedVariantId = variantId || '';
+
+    let cart;
+    if (req.session?.user) {
+      cart = await getOrCreateCart(req.session.user.id);
+      const item = cart.items.find((i) => cartItemMatches(i, productId, normalizedVariantId));
+      if (!item) return res.status(404).json({ error: 'Không tìm thấy sản phẩm trong giỏ' });
+
+      if (qty === 0) {
+        cart.items = cart.items.filter((i) => !cartItemMatches(i, productId, normalizedVariantId));
+      } else {
+        item.quantity = qty;
+        item.subTotal = item.price * qty;
+      }
+      recalc(cart);
+      await cart.save();
+    } else {
+      cart = ensureGuestCart(req);
+      const item = cart.items.find(
+        (i) => i.productID === productId && (i.variantId || '') === normalizedVariantId
+      );
+      if (!item) return res.status(404).json({ error: 'Không tìm thấy sản phẩm trong giỏ' });
+
+      if (qty === 0) {
+        cart.items = cart.items.filter(
+          (i) => !(i.productID === productId && (i.variantId || '') === normalizedVariantId)
+        );
+      } else {
+        item.quantity = qty;
+        item.subTotal = item.price * qty;
+      }
+      recalc(cart);
+    }
+
+    const appliedDiscount = req.session?.checkoutCoupon?.discount || 0;
+    const summary = computeSummary(cart.totalPrice || 0, appliedDiscount);
+    return res.json({ ok: true, cart: { items: cart.items, totalPrice: cart.totalPrice }, summary });
+  } catch (err) {
+    console.error('apiUpdateItem error:', err);
+    return res.status(500).json({ error: 'Không thể cập nhật giỏ hàng' });
+  }
+};
+
+exports.apiRemoveItem = async (req, res) => {
+  const { productId, variantId = '' } = req.body;
+  try {
+    const normalizedVariantId = variantId || '';
+    let cart;
+    if (req.session?.user) {
+      cart = await getOrCreateCart(req.session.user.id);
+      cart.items = cart.items.filter((i) => !cartItemMatches(i, productId, normalizedVariantId));
+      recalc(cart);
+      await cart.save();
+    } else {
+      cart = ensureGuestCart(req);
+      cart.items = cart.items.filter(
+        (i) => !(i.productID === productId && (i.variantId || '') === normalizedVariantId)
+      );
+      recalc(cart);
+    }
+
+    const appliedDiscount = req.session?.checkoutCoupon?.discount || 0;
+    const summary = computeSummary(cart.totalPrice || 0, appliedDiscount);
+    return res.json({ ok: true, cart: { items: cart.items, totalPrice: cart.totalPrice }, summary });
+  } catch (err) {
+    console.error('apiRemoveItem error:', err);
+    return res.status(500).json({ error: 'Không thể xóa sản phẩm' });
+  }
+};
+
 exports.getCheckout = async (req, res) => {
   const isLoggedIn = !!req.session?.user;
   const cart = isLoggedIn ? await getOrCreateCart(req.session.user.id) : ensureGuestCart(req);
@@ -310,9 +480,14 @@ exports.getCheckout = async (req, res) => {
     prefill = buildPrefillFromBody(req.session.checkoutDraft || {});
   }
 
+  const appliedDiscount = req.session?.checkoutCoupon?.discount || 0;
+  const summary = computeSummary(cart.totalPrice || 0, appliedDiscount);
+
   res.render('checkout/index', {
     title: 'Thanh toán',
     cart,
+    summary,
+    appliedCoupon: req.session?.checkoutCoupon || null,
     error: null,
     prefill,
     isLoggedIn,
@@ -413,7 +588,9 @@ exports.postCheckout = async (req, res) => {
       userId = guestUser._id.toString();
     }
 
-    const pointEarned = Math.floor((cart.totalPrice || 0) / 10000);
+    const appliedDiscount = req.session?.checkoutCoupon?.discount || 0;
+    const { shipping, tax, total } = computeSummary(cart.totalPrice || 0, appliedDiscount);
+    const pointEarned = Math.floor((total || 0) / 10000);
     const order = new Order({
       userID: userId,
       address: {
@@ -438,7 +615,9 @@ exports.postCheckout = async (req, res) => {
           price: item.variant?.price,
         },
       })),
-      totalPrice: cart.totalPrice,
+      shippingFee: shipping,
+      discount: appliedDiscount,
+      totalPrice: total,
       pointEarned,
       note: filledPayload.note,
       status: 'pending',
@@ -462,12 +641,27 @@ exports.postCheckout = async (req, res) => {
       delete req.session.checkoutDraft;
     }
 
+    // Increase coupon usage if applied
+    if (req.session?.checkoutCoupon?.couponId) {
+      try {
+        const Coupon = require('../models/Coupon');
+        await Coupon.findByIdAndUpdate(req.session.checkoutCoupon.couponId, {
+          $inc: { timeUsed: 1 },
+        }).lean();
+      } catch (e) {
+        console.error('Failed to increase coupon usage:', e);
+      }
+      delete req.session.checkoutCoupon;
+    }
+
     res.redirect(`/checkout/success?order=${order._id}`);
   } catch (err) {
     console.error('Checkout error:', err);
     return res.status(500).render('checkout/index', {
       title: 'Thanh toán',
       cart,
+      summary: computeSummary(cart.totalPrice || 0, req.session?.checkoutCoupon?.discount || 0),
+      appliedCoupon: req.session?.checkoutCoupon || null,
       error: 'Không thể hoàn tất thanh toán. Vui lòng thử lại sau.',
       prefill: buildPrefillFromBody(filledPayload),
       isLoggedIn,
@@ -482,4 +676,58 @@ exports.checkoutSuccess = async (req, res) => {
     title: 'Đặt hàng thành công',
     orderId: req.query.order || null,
   });
+};
+
+// Apply coupon during checkout
+exports.applyCoupon = async (req, res) => {
+  const { code } = req.body;
+  const isLoggedIn = !!req.session?.user;
+  const cart = isLoggedIn ? await getOrCreateCart(req.session.user.id) : ensureGuestCart(req);
+  if (!cart.items.length) return res.status(400).json({ error: 'Giỏ hàng trống' });
+
+  const trimmed = (code || '').trim().toUpperCase();
+  if (!trimmed || trimmed.length !== 5) {
+    return res.status(400).json({ error: 'Mã giảm giá không hợp lệ' });
+  }
+
+  try {
+    const coupon = await Coupon.findOne({ code: trimmed, isActive: true }).lean();
+    if (!coupon) return res.status(404).json({ error: 'Không tìm thấy mã giảm giá' });
+    if (typeof coupon.maxUsage === 'number' && coupon.maxUsage > 0) {
+      if ((coupon.timeUsed || 0) >= coupon.maxUsage) {
+        return res.status(400).json({ error: 'Mã đã hết lượt sử dụng' });
+      }
+    }
+
+    const subtotal = cart.totalPrice || 0;
+    let discount = 0;
+    if (coupon.discountType === 'percentage') {
+      discount = Math.floor((subtotal * coupon.discountValue) / 100);
+    } else {
+      discount = Math.floor(coupon.discountValue);
+    }
+    if (discount > subtotal) discount = subtotal;
+
+    req.session.checkoutCoupon = {
+      couponId: coupon._id.toString(),
+      code: coupon.code,
+      discount,
+    };
+
+    const summary = computeSummary(subtotal, discount);
+    return res.json({ ok: true, summary, appliedCoupon: req.session.checkoutCoupon });
+  } catch (err) {
+    console.error('applyCoupon error:', err);
+    return res.status(500).json({ error: 'Không thể áp dụng mã giảm giá' });
+  }
+};
+
+exports.removeCoupon = async (req, res) => {
+  const isLoggedIn = !!req.session?.user;
+  const cart = isLoggedIn ? await getOrCreateCart(req.session.user.id) : ensureGuestCart(req);
+  if (!cart.items.length) return res.status(400).json({ error: 'Giỏ hàng trống' });
+
+  delete req.session.checkoutCoupon;
+  const summary = computeSummary(cart.totalPrice || 0, 0);
+  return res.json({ ok: true, summary });
 };

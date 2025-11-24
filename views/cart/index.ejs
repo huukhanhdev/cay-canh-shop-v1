@@ -17,7 +17,7 @@
 <% if (cart.items.length === 0) { %>
   <p style="color:var(--muted)">Giỏ hàng trống. <a href="/shop">Tiếp tục mua sắm</a>.</p>
 <% } else { %>
-  <table class="cart-table">
+  <table class="cart-table" id="cartTable">
     <thead>
       <tr>
         <th>Sản phẩm</th>
@@ -32,7 +32,7 @@
         const rawId = item.productID && item.productID._id ? item.productID._id : item.productID;
         const productIdValue = rawId && rawId.toString ? rawId.toString() : rawId;
       %>
-        <tr>
+        <tr data-product-id="<%= productIdValue %>" data-variant-id="<%= item.variantId || '' %>">
           <td>
             <strong><%= item.productName %></strong>
             <% if (item.variant && item.variant.variantName) { %>
@@ -40,7 +40,7 @@
             <% } %>
           </td>
           <td>
-            <form method="POST" action="/cart/update" class="cart-update-form">
+            <form method="POST" action="/cart/update" class="cart-update-form" data-product-id="<%= productIdValue %>" data-variant-id="<%= item.variantId || '' %>">
               <input type="hidden" name="productId" value="<%= productIdValue %>">
               <input type="hidden" name="variantId" value="<%= item.variantId || '' %>">
               <input type="number" name="quantity" value="<%= item.quantity %>" min="0">
@@ -48,9 +48,9 @@
             </form>
           </td>
           <td><%= item.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
-          <td><%= item.subTotal.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
+          <td class="row-subtotal"><%= item.subTotal.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
           <td>
-            <form method="POST" action="/cart/update">
+            <form method="POST" action="/cart/update" class="cart-remove-form" data-product-id="<%= productIdValue %>" data-variant-id="<%= item.variantId || '' %>">
               <input type="hidden" name="productId" value="<%= productIdValue %>">
               <input type="hidden" name="variantId" value="<%= item.variantId || '' %>">
               <input type="hidden" name="quantity" value="0">
@@ -63,10 +63,15 @@
   </table>
 
   <div class="cart-summary">
-    <div>
-      <strong>Tổng cộng:</strong>
-      <span><%= cart.totalPrice.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span>
-    </div>
+    <div class="summary-line"><strong>Tạm tính:</strong> <span id="summary-subtotal"><%= (summary?.subtotal || cart.totalPrice).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
+    <% if (appliedCoupon) { %>
+      <div class="summary-line"><strong>Giảm (<%= appliedCoupon.code %>):</strong> <span id="summary-discount">-<%= (summary?.discount || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
+    <% } else { %>
+      <div class="summary-line"><strong>Giảm:</strong> <span id="summary-discount">-<%= (summary?.discount || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
+    <% } %>
+    <div class="summary-line"><strong>Thuế (VAT):</strong> <span id="summary-tax"><%= (summary?.tax || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
+    <div class="summary-line"><strong>Phí vận chuyển:</strong> <span id="summary-shipping"><%= (summary?.shipping || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
+    <div class="summary-line total"><strong>Tổng cộng:</strong> <span id="summary-total"><%= (summary?.total || cart.totalPrice).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
     <div>
       <a class="btn btn-secondary" href="/shop">Tiếp tục mua</a>
       <a class="btn btn-primary" href="/checkout">Thanh toán</a>
@@ -75,3 +80,73 @@
 <% } %>
 
 <%- include('../partials/footer') %>
+
+<% if (cart.items.length) { %>
+<script>
+  (function() {
+    const currency = (v) => (v || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+    function updateSummary(summary) {
+      if (!summary) return;
+      const el = (id) => document.getElementById(id);
+      const s = summary;
+      if (el('summary-subtotal')) el('summary-subtotal').textContent = currency(s.subtotal);
+      if (el('summary-discount')) el('summary-discount').textContent = '-' + currency(s.discount);
+      if (el('summary-tax')) el('summary-tax').textContent = currency(s.tax);
+      if (el('summary-shipping')) el('summary-shipping').textContent = currency(s.shipping);
+      if (el('summary-total')) el('summary-total').textContent = currency(s.total);
+    }
+
+    function handleUpdate(form, qty) {
+      const pid = form.dataset.productId;
+      const vid = form.dataset.variantId || '';
+      const body = new URLSearchParams();
+      body.set('productId', pid);
+      body.set('variantId', vid);
+      body.set('quantity', String(qty));
+      return fetch('/cart/api/update', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() })
+        .then(r => r.json());
+    }
+
+    document.querySelectorAll('.cart-update-form').forEach((form) => {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const qtyInput = form.querySelector('input[name="quantity"]');
+        const qty = parseInt(qtyInput.value, 10) || 0;
+        handleUpdate(form, qty).then((res) => {
+          if (!res || !res.ok) return location.reload();
+          const tr = form.closest('tr');
+          const rowSubtotal = tr && tr.querySelector('.row-subtotal');
+          // Find updated item to get new subtotal
+          const pid = form.dataset.productId;
+          const vid = form.dataset.variantId || '';
+          const item = (res.cart.items || []).find(i => (String(i.productID?._id || i.productID) === pid) && ((i.variantId || '') === (vid || '')));
+          if (item && rowSubtotal) rowSubtotal.textContent = currency(item.subTotal);
+          if (!item && tr) tr.remove();
+          updateSummary(res.summary);
+        }).catch(() => location.reload());
+      });
+    });
+
+    document.querySelectorAll('.cart-remove-form').forEach((form) => {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const pid = form.dataset.productId;
+        const vid = form.dataset.variantId || '';
+        const body = new URLSearchParams();
+        body.set('productId', pid);
+        body.set('variantId', vid);
+        fetch('/cart/api/remove', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() })
+          .then(r => r.json())
+          .then((res) => {
+            if (!res || !res.ok) return location.reload();
+            const tr = form.closest('tr');
+            if (tr) tr.remove();
+            updateSummary(res.summary);
+            const hasRows = document.querySelectorAll('#cartTable tbody tr').length > 0;
+            if (!hasRows) location.reload();
+          }).catch(() => location.reload());
+      });
+    });
+  })();
+</script>
+<% } %>

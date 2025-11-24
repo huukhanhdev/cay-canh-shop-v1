@@ -1,42 +1,44 @@
 <%- include('partials/header', { title: 'Đăng nhập' }) %>
 
-<h2>Đăng nhập</h2>
+<section class="auth-container fade-in-up">
+  <h2 class="auth-title">Đăng nhập</h2>
 
-<% if (locals.msg === 'logout') { %>
-  <p style="color:green">Đã đăng xuất.</p>
-<% } else if (locals.msg === 'register_ok') { %>
-  <p style="color:green">Tạo tài khoản thành công. Vui lòng đăng nhập.</p>
-<% } else if (locals.msg === 'reset_ok') { %>
-  <p style="color:green">Mật khẩu đã được cập nhật. Bạn có thể đăng nhập ngay.</p>
-<% } else if (locals.msg === 'otp_required') { %>
-  <p style="color:#c55">Vui lòng xác thực OTP trước khi tiếp tục.</p>
-<% } %>
+  <% if (locals.msg === 'logout') { %>
+    <p class="alert-inline-success">Đã đăng xuất.</p>
+  <% } else if (locals.msg === 'register_ok') { %>
+    <p class="alert-inline-success">Tạo tài khoản thành công. Vui lòng đăng nhập.</p>
+  <% } else if (locals.msg === 'reset_ok') { %>
+    <p class="alert-inline-success">Mật khẩu đã được cập nhật. Bạn có thể đăng nhập ngay.</p>
+  <% } else if (locals.msg === 'otp_required') { %>
+    <p class="alert-inline-error">Vui lòng xác thực OTP trước khi tiếp tục.</p>
+  <% } %>
 
-<% if ((typeof error !== 'undefined' ? error : locals.error)) { %>
-  <p style="color:red"><%= (typeof error !== 'undefined' ? error : locals.error) %></p>
-<% } %>
+  <% if ((typeof error !== 'undefined' ? error : locals.error)) { %>
+    <p class="alert-inline-error"><%= (typeof error !== 'undefined' ? error : locals.error) %></p>
+  <% } %>
 
-<form method="POST" action="/auth/login">
-  <input type="hidden" name="next" value="<%= typeof next !== 'undefined' ? next : (locals.next || '') %>">
-  <div>
-    <label>Email</label>
-    <input type="email" name="email" required />
+  <div class="auth-card">
+    <form method="POST" action="/auth/login">
+      <input type="hidden" name="next" value="<%= typeof next !== 'undefined' ? next : (locals.next || '') %>">
+      <label>Email
+        <input type="email" name="email" required />
+      </label>
+      <label>Mật khẩu
+        <input type="password" name="password" required />
+      </label>
+      <div class="auth-actions">
+        <button class="btn btn-primary" type="submit">Đăng nhập</button>
+      </div>
+    </form>
+
+    <% if (locals.googleAuthEnabled) { %>
+      <div class="oauth-buttons">
+        <a class="btn btn-google" href="/auth/google">Đăng nhập bằng Google</a>
+      </div>
+    <% } %>
+
+    <p class="auth-switch"><a href="/auth/forgot">Quên mật khẩu?</a></p>
   </div>
-  <div>
-    <label>Mật khẩu</label>
-    <input type="password" name="password" required />
-  </div>
-  <button type="submit">Đăng nhập</button>
-</form>
-
-<% if (locals.googleAuthEnabled) { %>
-  <div class="oauth-buttons">
-    <a class="btn btn-google" href="/auth/google">Đăng nhập bằng Google</a>
-  </div>
-<% } %>
-
-<p style="margin-top:8px">
-  <a href="/auth/forgot">Quên mật khẩu?</a>
-</p>
+</section>
 
 <%- include('partials/footer') %>

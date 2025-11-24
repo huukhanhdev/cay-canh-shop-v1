@@ -1,35 +1,54 @@
 <%- include('partials/header', { title }) %>
-<h2>Đăng ký</h2>
-<% if (typeof error !== 'undefined') { %><p style="color:red"><%= error %></p><% } %>
-<% if (locals.msg === 'register_required') { %>
-  <p style="color:#c55">Vui lòng hoàn tất đăng ký bằng cách xác thực OTP đã gửi trước đó.</p>
-<% } %>
-<% const registerForm = formData || {}; %>
-<form method="POST" action="/auth/register">
-  <label>Email</label><input name="email" type="email" value="<%= registerForm.email || '' %>" required>
-  <label>Họ tên</label><input name="fullName" value="<%= registerForm.fullName || '' %>" required>
-  <label>Địa chỉ giao hàng</label>
-  <input name="street" placeholder="Số nhà, đường" value="<%= registerForm.street || '' %>">
-  <div class="form-grid" data-location-form>
-    <label>
-      Tỉnh/Thành phố
-      <select name="city" data-city-select data-placeholder="Chọn tỉnh/thành" data-selected="<%= registerForm.city || '' %>">
-        <option value="">Chọn tỉnh/thành</option>
-      </select>
-    </label>
-    <label>
-      Quận/Huyện
-      <select name="district" data-district-select data-placeholder="Chọn quận/huyện" data-selected="<%= registerForm.district || '' %>">
-        <option value="">Chọn quận/huyện</option>
-      </select>
-    </label>
+
+<section class="auth-container fade-in-up">
+  <h2 class="auth-title">Đăng ký</h2>
+
+  <% if (typeof error !== 'undefined') { %>
+    <p class="alert-inline-error"><%= error %></p>
+  <% } %>
+  <% if (locals.msg === 'register_required') { %>
+    <p class="alert-inline-error">Vui lòng hoàn tất đăng ký bằng cách xác thực OTP đã gửi trước đó.</p>
+  <% } %>
+
+  <% const registerForm = formData || {}; %>
+  <div class="auth-card">
+    <form method="POST" action="/auth/register">
+      <label>Email
+        <input name="email" type="email" value="<%= registerForm.email || '' %>" required>
+      </label>
+      <label>Họ tên
+        <input name="fullName" value="<%= registerForm.fullName || '' %>" required>
+      </label>
+      <label>Địa chỉ giao hàng</label>
+      <input name="street" placeholder="Số nhà, đường" value="<%= registerForm.street || '' %>">
+      <div class="form-grid" data-location-form>
+        <label>
+          Tỉnh/Thành phố
+          <select name="city" data-city-select data-placeholder="Chọn tỉnh/thành" data-selected="<%= registerForm.city || '' %>">
+            <option value="">Chọn tỉnh/thành</option>
+          </select>
+        </label>
+        <label>
+          Quận/Huyện
+          <select name="district" data-district-select data-placeholder="Chọn quận/huyện" data-selected="<%= registerForm.district || '' %>">
+            <option value="">Chọn quận/huyện</option>
+          </select>
+        </label>
+      </div>
+      <div class="auth-actions">
+        <button class="btn btn-primary" type="submit">Đăng ký</button>
+      </div>
+    </form>
+
+    <% if (locals.googleAuthEnabled) { %>
+      <div class="oauth-buttons">
+        <a class="btn btn-google" href="/auth/google">Đăng ký nhanh bằng Google</a>
+      </div>
+    <% } %>
+
+    <p class="auth-switch">Đã có tài khoản? <a href="/auth/login">Đăng nhập</a></p>
   </div>
-  <button>Đăng ký</button>
-</form>
-<% if (locals.googleAuthEnabled) { %>
-  <div class="oauth-buttons">
-    <a class="btn btn-google" href="/auth/google">Đăng ký nhanh bằng Google</a>
-  </div>
-<% } %>
+</section>
+
 <%- include('partials/location-script', { locations }) %>
 <%- include('partials/footer') %>

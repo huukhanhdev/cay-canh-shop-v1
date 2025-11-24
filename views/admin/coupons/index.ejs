@@ -1,0 +1,76 @@
+<%- include('../../partials/header', { title }) %>
+
+<h2>Quản lý mã giảm giá</h2>
+
+<form method="POST" action="/admin/coupons/create" class="card" style="margin-bottom:16px">
+  <h3>Tạo mã mới</h3>
+  <div class="form-grid">
+    <label>Mã (5 ký tự)
+      <input name="code" maxlength="5" placeholder="Bỏ trống để tự sinh">
+    </label>
+    <label>Loại giảm
+      <select name="discountType">
+        <option value="percentage">Theo %</option>
+        <option value="fixed">Số tiền</option>
+      </select>
+    </label>
+    <label>Giá trị
+      <input name="discountValue" type="number" min="0" value="10">
+    </label>
+    <label>Giới hạn lượt dùng
+      <input name="maxUsage" type="number" min="1" value="10">
+    </label>
+    <label style="align-self:end">
+      <input type="checkbox" name="isActive" checked> Kích hoạt
+    </label>
+  </div>
+  <button class="btn btn-primary" type="submit">Tạo mã</button>
+  <% if (msg) { %>
+    <p class="form-hint"><%= msg %></p>
+  <% } %>
+  <% if (error) { %>
+    <p class="alert alert-error"><%= error %></p>
+  <% } %>
+  <p class="form-hint">Gợi ý: 5 ký tự chữ in hoa và số, ví dụ: <code>HAPPY</code>, <code>PLANT</code>.</p>
+  <p class="form-hint">Theo %: nhập 10 nghĩa là giảm 10% tổng tạm tính. Số tiền: nhập trực tiếp số tiền VND.</p>
+  <p class="form-hint">Giới hạn lượt dùng là tổng lượt dùng cho tất cả khách hàng.</p>
+</form>
+
+<div class="card">
+  <h3>Danh sách mã</h3>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Mã</th><th>Loại</th><th>Giá trị</th><th>Đã dùng</th><th>Giới hạn</th><th>Trạng thái</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% coupons.forEach(c => { %>
+        <tr>
+          <td><code><%= c.code %></code></td>
+          <td><%= c.discountType === 'fixed' ? 'Số tiền' : 'Theo %' %></td>
+          <td>
+            <% if (c.discountType === 'fixed') { %>
+              <%= c.discountValue.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %>
+            <% } else { %>
+              <%= c.discountValue %>%
+            <% } %>
+          </td>
+          <td><%= c.timeUsed || 0 %></td>
+          <td><%= c.maxUsage || 0 %></td>
+          <td><%= c.isActive ? 'Đang bật' : 'Tắt' %></td>
+          <td style="display:flex; gap:8px">
+            <form method="POST" action="/admin/coupons/<%= c._id %>/toggle">
+              <button class="btn btn-secondary" type="submit"><%= c.isActive ? 'Tắt' : 'Bật' %></button>
+            </form>
+            <form method="POST" action="/admin/coupons/<%= c._id %>/delete" onsubmit="return confirm('Xóa mã này?');">
+              <button class="btn btn-danger" type="submit">Xóa</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('../../partials/footer') %>
