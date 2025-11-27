@@ -493,6 +493,7 @@ exports.getCheckout = async (req, res) => {
     prefill,
     isLoggedIn,
     savedAddresses,
+    loyaltyPoints: isLoggedIn ? (prefill && (await User.findById(req.session.user.id).lean().catch(() => null))?.loyaltyPoints) || 0 : 0,
     locations,
   });
 };
@@ -562,6 +563,7 @@ exports.postCheckout = async (req, res) => {
 
   try {
     let userId = req.session?.user?.id;
+    let userDoc = null;
     if (!isLoggedIn) {
       const guestUser = await ensureUserForGuestCheckout({
         email: filledPayload.email,
@@ -587,11 +589,22 @@ exports.postCheckout = async (req, res) => {
       });
       }
       userId = guestUser._id.toString();
+      userDoc = guestUser;
+    }
+    if (isLoggedIn) {
+      userDoc = await User.findById(userId);
     }
 
     const appliedDiscount = req.session?.checkoutCoupon?.discount || 0;
-    const { shipping, tax, total } = computeSummary(cart.totalPrice || 0, appliedDiscount);
-    const pointEarned = Math.floor((total || 0) / 10000);
+    const subtotal = cart.totalPrice || 0;
+    // Redeem points: from request body (pointsToUse), limited by user loyaltyPoints and subtotal after coupon
+    const requestedPoints = Math.max(0, Number(req.body.pointsToUse || 0) || 0);
+    const availablePoints = Math.max(0, Number(userDoc?.loyaltyPoints || 0));
+    const maxRedeemable = Math.max(0, subtotal - appliedDiscount);
+    const pointUsed = Math.min(requestedPoints, availablePoints, maxRedeemable);
+
+    const { shipping, tax, total } = computeSummary(subtotal, appliedDiscount + pointUsed);
+    const pointEarned = Math.floor((total || 0) * 0.10);
     const order = new Order({
       userID: userId,
       address: {
@@ -620,11 +633,47 @@ exports.postCheckout = async (req, res) => {
       discount: appliedDiscount,
       totalPrice: total,
       pointEarned,
+      pointUsed,
       note: filledPayload.note,
       status: 'pending',
+      statusHistory: [
+        { status: 'pending', updatedAt: new Date(), note: 'Khởi tạo đơn hàng' }
+      ],
+      pointRewarded: true,
     });
 
     await order.save();
+
+    // Update user loyalty points: deduct used now; add earned later (or immediately per requirement)
+    try {
+      if (userDoc) {
+        // Deduct used points immediately
+        if (pointUsed > 0) {
+          userDoc.loyaltyPoints = Math.max(0, (userDoc.loyaltyPoints || 0) - pointUsed);
+        }
+        // Add earned points immediately (no extra restrictions)
+        if (pointEarned > 0) {
+          userDoc.loyaltyPoints = Math.max(0, (userDoc.loyaltyPoints || 0)) + pointEarned;
+        }
+        await userDoc.save();
+      }
+    } catch (e) {
+      console.error('Update loyalty points error:', e);
+    }
+
+    // Gửi email xác nhận đơn hàng (best-effort, không chặn luồng nếu lỗi)
+    try {
+      const userForMail = await User.findById(userId).lean();
+      const emailTo = userForMail?.email || filledPayload.email;
+      if (emailTo) {
+        const { sendOrderConfirmationEmail } = require('../utils/mailer');
+        sendOrderConfirmationEmail(emailTo, order).catch((e) => {
+          console.error('Send order confirmation email error:', e);
+        });
+      }
+    } catch (mailErr) {
+      console.error('Order email lookup error:', mailErr);
+    }
 
     if (isLoggedIn) {
       cart.items = [];

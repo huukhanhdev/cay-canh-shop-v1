@@ -127,6 +127,13 @@ exports.updateStatus = async (req, res) => {
     const previousStatus = order.status;
     order.status = status;
 
+    // Append vào lịch sử nếu trạng thái thay đổi
+    if (previousStatus !== status) {
+      const note = status === 'canceled' ? (order.cancelReason || 'Hủy đơn') : undefined;
+      order.statusHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+      order.statusHistory.push({ status, updatedAt: new Date(), note });
+    }
+
     // Khi chuyển sang 'done' -> trừ tồn (chỉ trừ 1 lần)
     if (previousStatus !== 'done' && status === 'done' && !order.pointRewarded) {
       const points = order.pointEarned || Math.floor((order.totalPrice || 0) / 10000);

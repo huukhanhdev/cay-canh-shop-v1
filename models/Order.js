@@ -47,6 +47,21 @@ const orderSchema = new Schema(
       enum: ["pending", "preparing", "shipping", "done", "canceled"],
       default: "pending",
     },
+    // Lịch sử trạng thái: mỗi lần đổi trạng thái sẽ append một bản ghi
+    statusHistory: [
+      new Schema(
+        {
+          status: {
+            type: String,
+            enum: ["pending", "preparing", "shipping", "done", "canceled"],
+            required: true,
+          },
+          updatedAt: { type: Date, default: Date.now },
+          note: { type: String, trim: true },
+        },
+        { _id: false }
+      ),
+    ],
     items: { type: [orderItemSchema], required: true, default: [] },
     shippingFee: { type: Number, default: 0 },
     couponID: { type: Schema.Types.ObjectId, ref: "Coupon", default: null },

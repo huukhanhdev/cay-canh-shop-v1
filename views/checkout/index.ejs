@@ -117,8 +117,21 @@
       <% } %>
     </div>
 
+    <% const pointsAvailable = typeof locals.loyaltyPoints === 'number' ? locals.loyaltyPoints : 0; %>
+    <div class="coupon-box">
+      <label>Điểm thưởng</label>
+      <p class="form-hint">Bạn đang có: <strong><%= pointsAvailable.toLocaleString('vi-VN') %></strong> điểm (1 điểm = 1 VND).</p>
+      <div style="display:flex; gap:8px; align-items:center">
+        <input id="pointsInput" name="pointsToUse" type="number" min="0" step="1" placeholder="Số điểm muốn dùng" />
+        <button class="btn btn-secondary" id="applyPointsBtn" type="button">Dùng điểm</button>
+        <button class="btn btn-danger" id="removePointsBtn" type="button" style="display:none">Bỏ điểm</button>
+      </div>
+      <div id="pointsMsg" class="form-hint" style="color:var(--muted)"></div>
+    </div>
+
     <div class="summary-line"><strong>Tạm tính:</strong> <span id="summary-subtotal"><%= (summary?.subtotal || cart.totalPrice).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
     <div class="summary-line"><strong>Giảm:</strong> <span id="summary-discount">-<%= (summary?.discount || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
+    <div class="summary-line"><strong>Điểm đã dùng:</strong> <span id="summary-points">-<%= (0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
     <div class="summary-line"><strong>Thuế (VAT):</strong> <span id="summary-tax"><%= (summary?.tax || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
     <div class="summary-line"><strong>Phí vận chuyển:</strong> <span id="summary-shipping"><%= (summary?.shipping || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
     <div class="summary-line total"><strong>Tổng cộng:</strong> <span id="summary-total"><%= (summary?.total || cart.totalPrice).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span></div>
@@ -137,6 +150,47 @@
     const btnToReview = document.getElementById('btnToReview');
     const btnBackToPayment = document.getElementById('btnBackToPayment');
     const btnSubmitOrder = document.getElementById('btnSubmitOrder');
+        // Points apply/remove (client-side reflect only; submitted with form)
+        const pointsInput = document.getElementById('pointsInput');
+        const applyPointsBtn = document.getElementById('applyPointsBtn');
+        const removePointsBtn = document.getElementById('removePointsBtn');
+        const pointsMsg = document.getElementById('pointsMsg');
+        const summarySubtotalEl = document.getElementById('summary-subtotal');
+        const summaryDiscountEl = document.getElementById('summary-discount');
+        const summaryTaxEl = document.getElementById('summary-tax');
+        const summaryShippingEl = document.getElementById('summary-shipping');
+        const summaryTotalEl = document.getElementById('summary-total');
+        const summaryPointsEl = document.getElementById('summary-points');
+
+        function parseCurrency(text) {
+          try { return Number(String(text).replace(/[^0-9.-]/g, '')) || 0; } catch { return 0; }
+        }
+
+        function updateSummaryWithPoints(points) {
+          const subtotal = parseCurrency(summarySubtotalEl.textContent);
+          const discount = parseCurrency(summaryDiscountEl.textContent);
+          const shipping = parseCurrency(summaryShippingEl.textContent);
+          const tax = parseCurrency(summaryTaxEl.textContent);
+          const used = Math.max(0, Math.min(points || 0, subtotal - discount));
+          summaryPointsEl.textContent = ('-' + used.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }));
+          const total = Math.max(0, subtotal - discount - used + tax + shipping);
+          summaryTotalEl.textContent = total.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+        }
+
+        applyPointsBtn?.addEventListener('click', () => {
+          const val = Math.max(0, Number(pointsInput?.value || 0) || 0);
+          if (!val) { pointsMsg.textContent = 'Nhập số điểm muốn dùng'; return; }
+          removePointsBtn.style.display = '';
+          pointsMsg.textContent = `Đang dùng: ${val.toLocaleString('vi-VN')} điểm`;
+          updateSummaryWithPoints(val);
+        });
+
+        removePointsBtn?.addEventListener('click', () => {
+          pointsInput.value = '';
+          pointsMsg.textContent = '';
+          removePointsBtn.style.display = 'none';
+          updateSummaryWithPoints(0);
+        });
     const ind1 = document.getElementById('stepIndicator1');
     const ind2 = document.getElementById('stepIndicator2');
     const ind3 = document.getElementById('stepIndicator3');
