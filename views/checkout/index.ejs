@@ -84,7 +84,7 @@
       <p>Vui lòng kiểm tra lại thông tin và tổng tiền ở bên phải trước khi đặt hàng.</p>
       <div class="form-actions">
         <button class="btn btn-secondary" id="btnBackToPayment" type="button">Quay lại</button>
-        <button class="btn btn-primary" type="submit">Đặt hàng</button>
+        <button class="btn btn-primary" id="btnSubmitOrder" type="button">Đặt hàng</button>
       </div>
     </section>
   </form>
@@ -136,9 +136,11 @@
     const btnBackToShipping = document.getElementById('btnBackToShipping');
     const btnToReview = document.getElementById('btnToReview');
     const btnBackToPayment = document.getElementById('btnBackToPayment');
+    const btnSubmitOrder = document.getElementById('btnSubmitOrder');
     const ind1 = document.getElementById('stepIndicator1');
     const ind2 = document.getElementById('stepIndicator2');
     const ind3 = document.getElementById('stepIndicator3');
+    const form = document.getElementById('checkoutForm');
 
     function showStep(step) {
       stepShipping.style.display = step === 1 ? '' : 'none';
@@ -147,11 +149,56 @@
       ind1.style.textDecoration = step === 1 ? 'underline' : '';
       ind2.style.textDecoration = step === 2 ? 'underline' : '';
       ind3.style.textDecoration = step === 3 ? 'underline' : '';
+      
+      // Disable validation on hidden fields
+      const allInputs = document.querySelectorAll('#checkoutForm input, #checkoutForm select, #checkoutForm textarea');
+      allInputs.forEach(inp => {
+        const section = inp.closest('section');
+        if (section && section.style.display === 'none') {
+          inp.setAttribute('data-was-required', inp.hasAttribute('required'));
+          inp.removeAttribute('required');
+        } else if (inp.hasAttribute('data-was-required')) {
+          inp.setAttribute('required', '');
+        }
+      });
     }
-    if (btnToPayment) btnToPayment.addEventListener('click', () => showStep(2));
+    
+    if (btnToPayment) {
+      btnToPayment.addEventListener('click', () => {
+        // Validate step 1 fields before moving
+        const form = document.getElementById('checkoutForm');
+        const step1Inputs = stepShipping.querySelectorAll('input[required], select[required]');
+        let valid = true;
+        step1Inputs.forEach(inp => {
+          if (!inp.checkValidity()) {
+            valid = false;
+            inp.reportValidity();
+          }
+        });
+        if (valid) showStep(2);
+      });
+    }
     if (btnBackToShipping) btnBackToShipping.addEventListener('click', () => showStep(1));
     if (btnToReview) btnToReview.addEventListener('click', () => showStep(3));
     if (btnBackToPayment) btnBackToPayment.addEventListener('click', () => showStep(2));
+    
+    if (btnSubmitOrder) {
+      btnSubmitOrder.addEventListener('click', (e) => {
+        console.log('Submit button clicked');
+        e.preventDefault();
+        
+        // Re-enable all required fields before submit
+        const allInputs = form.querySelectorAll('input, select, textarea');
+        allInputs.forEach(inp => {
+          if (inp.hasAttribute('data-was-required')) {
+            inp.setAttribute('required', '');
+          }
+        });
+        
+        console.log('Submitting form...');
+        form.submit();
+      });
+    }
 
     // Coupon handling
     const currency = (v) => (v || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });

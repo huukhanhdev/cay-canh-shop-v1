@@ -4,6 +4,14 @@
   <div>
     <h2>Thông tin cá nhân</h2>
     <p>Quản lý hồ sơ, địa chỉ nhận hàng và bảo mật tài khoản.</p>
+    <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <% if (user && user.isVerified) { %>
+        <span class="status" style="background: rgba(40, 167, 69, 0.18); color: #1f512f;">Đã xác thực</span>
+      <% } else { %>
+        <span class="status" style="background: rgba(220, 53, 69, 0.18); color: #87212d;">Chưa xác thực</span>
+        <a class="btn btn-secondary" href="/auth/forgot">Xác thực bằng OTP</a>
+      <% } %>
+    </div>
   </div>
 </section>
 
@@ -31,7 +39,7 @@
   <p class="alert alert-error"><%= passwordError %></p>
 <% } %>
 
-<div class="order-detail">
+<div class="profile-layout">
   <form class="admin-form" method="POST" action="/account/profile">
     <h3>Hồ sơ cá nhân</h3>
     <label>
@@ -48,38 +56,6 @@
       <input type="number" value="<%= user.loyaltyPoints || 0 %>" disabled />
       <small>Điểm được cộng khi đơn hàng hoàn tất.</small>
     </label>
-
-    <h4>Địa chỉ mặc định</h4>
-    <div class="form-grid">
-      <label>
-        Họ tên người nhận
-        <input type="text" name="shippingFullName" value="<%= address && address.fullName ? address.fullName : '' %>" />
-      </label>
-      <label>
-        Số điện thoại
-        <input type="text" name="shippingPhone" value="<%= address && address.phone ? address.phone : '' %>" />
-      </label>
-    </div>
-    <label>
-      Đường / Số nhà
-      <input type="text" name="shippingStreet" value="<%= address && address.street ? address.street : '' %>" />
-    </label>
-    <div class="form-grid" data-location-form>
-      <label>
-        Tỉnh / Thành phố
-        <select name="shippingCity" data-city-select data-placeholder="Chọn tỉnh/thành" data-selected="<%= address && address.city ? address.city : '' %>">
-          <option value="">Chọn tỉnh/thành</option>
-        </select>
-      </label>
-      <label>
-        Quận / Huyện
-        <select name="shippingDistrict" data-district-select data-placeholder="Chọn quận/huyện" data-selected="<%= address && address.district ? address.district : '' %>">
-          <option value="">Chọn quận/huyện</option>
-        </select>
-      </label>
-    </div>
-
-    <button type="submit">Lưu thay đổi</button>
   </form>
 
   <form class="admin-form" method="POST" action="/account/profile/password">
@@ -98,6 +74,40 @@
     </label>
     <button type="submit">Cập nhật mật khẩu</button>
   </form>
+
+  <section class="admin-form">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+      <h3 style="margin:0">Địa chỉ đã lưu</h3>
+      <button class="btn btn-secondary" id="openAddAddress" type="button">Thêm địa chỉ mới</button>
+    </div>
+    <% if (!addresses.length) { %>
+      <p style="color:var(--muted)">Bạn chưa có địa chỉ nào. Hãy thêm địa chỉ mới bên dưới.</p>
+    <% } %>
+    <div class="address-list">
+      <% addresses.forEach((addr, index) => { %>
+        <div class="address-card">
+          <div>
+            <strong><%= addr.fullName || 'Chưa có tên' %></strong>
+            <p><%= addr.phone || 'Chưa có số điện thoại' %></p>
+            <p><%= addr.street || '' %></p>
+            <p><%= [addr.district, addr.city].filter(Boolean).join(', ') %></p>
+          </div>
+          <div class="address-card__actions">
+            <% if (addr.isDefault) { %>
+              <span class="pill">Mặc định</span>
+            <% } else { %>
+              <form method="POST" action="/account/addresses/<%= index %>/default">
+                <button class="btn btn-secondary" type="submit">Đặt làm mặc định</button>
+              </form>
+            <% } %>
+            <form method="POST" action="/account/addresses/<%= index %>/delete" onsubmit="return confirm('Xóa địa chỉ này?');">
+              <button class="btn btn-danger" type="submit">Xóa</button>
+            </form>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </section>
 </div>
 
 <section class="admin-form">
@@ -131,42 +141,75 @@
   </div>
 </section>
 
-<form class="admin-form" method="POST" action="/account/addresses">
-  <h3>Thêm địa chỉ mới</h3>
-  <div class="form-grid">
-    <label>
-      Họ tên người nhận
-      <input type="text" name="newAddressFullName" required />
-    </label>
-    <label>
-      Số điện thoại
-      <input type="text" name="newAddressPhone" required />
-    </label>
+<!-- Add Address Modal -->
+<div class="modal" id="addAddressModal" aria-hidden="true" style="display:none">
+  <div class="modal__backdrop" id="addAddressBackdrop"></div>
+  <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="addAddressTitle">
+    <div class="modal__header">
+      <h3 id="addAddressTitle" style="margin:0">Thêm địa chỉ mới</h3>
+      <button class="btn btn-secondary" id="closeAddAddress" type="button">Đóng</button>
+    </div>
+    <form class="admin-form" method="POST" action="/account/addresses" id="addAddressForm" style="margin-top:12px">
+      <div class="form-grid">
+        <label>
+          Họ tên người nhận
+          <input type="text" name="newAddressFullName" required />
+        </label>
+        <label>
+          Số điện thoại
+          <input type="text" name="newAddressPhone" required />
+        </label>
+      </div>
+      <label>
+        Đường / Số nhà
+        <input type="text" name="newAddressStreet" required />
+      </label>
+      <div class="form-grid" data-location-form>
+        <label>
+          Tỉnh / Thành phố
+          <select name="newAddressCity" data-city-select data-placeholder="Chọn tỉnh/thành">
+            <option value="">Chọn tỉnh/thành</option>
+          </select>
+        </label>
+        <label>
+          Quận / Huyện
+          <select name="newAddressDistrict" data-district-select data-placeholder="Chọn quận/huyện">
+            <option value="">Chọn quận/huyện</option>
+          </select>
+        </label>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" name="newAddressIsDefault">
+        Đặt làm địa chỉ mặc định
+      </label>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Thêm địa chỉ</button>
+      </div>
+    </form>
   </div>
-  <label>
-    Đường / Số nhà
-    <input type="text" name="newAddressStreet" required />
-  </label>
-  <div class="form-grid" data-location-form>
-    <label>
-      Tỉnh / Thành phố
-      <select name="newAddressCity" data-city-select data-placeholder="Chọn tỉnh/thành">
-        <option value="">Chọn tỉnh/thành</option>
-      </select>
-    </label>
-    <label>
-      Quận / Huyện
-      <select name="newAddressDistrict" data-district-select data-placeholder="Chọn quận/huyện">
-        <option value="">Chọn quận/huyện</option>
-      </select>
-    </label>
   </div>
-  <label style="display:flex;align-items:center;gap:8px;">
-    <input type="checkbox" name="newAddressIsDefault">
-    Đặt làm địa chỉ mặc định
-  </label>
-  <button type="submit">Thêm địa chỉ</button>
-</form>
+
+<script>
+  (function() {
+    const openBtn = document.getElementById('openAddAddress');
+    const closeBtn = document.getElementById('closeAddAddress');
+    const backdrop = document.getElementById('addAddressBackdrop');
+    const modal = document.getElementById('addAddressModal');
+    function openModal() {
+      modal.style.display = '';
+      modal.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeModal() {
+      modal.style.display = 'none';
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+    if (openBtn) openBtn.addEventListener('click', openModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (backdrop) backdrop.addEventListener('click', closeModal);
+  })();
+  </script>
 
 <%- include('../partials/location-script', { locations }) %>
 <%- include('../partials/footer') %>

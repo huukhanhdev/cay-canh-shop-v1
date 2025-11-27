@@ -93,7 +93,8 @@ async function ensureUserForGuestCheckout({ email, fullName, address }) {
     user = new User({
       email: normalizedEmail,
       fullName: fullName.trim(),
-      isVerified: true,
+      // Guest checkout user should be marked unverified until OTP/password set
+      isVerified: false,
       role: 'customer',
       shippingAddresses: address ? [{ ...address, isDefault: true }] : [],
     });
@@ -108,7 +109,7 @@ async function ensureUserForGuestCheckout({ email, fullName, address }) {
       }
       user.markModified('shippingAddresses');
     }
-    if (!user.isVerified) user.isVerified = true;
+    // Do not auto-verify here; keep unverified until OTP/password flow
   }
 
   await user.save();

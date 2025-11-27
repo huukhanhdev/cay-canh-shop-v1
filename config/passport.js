@@ -31,7 +31,8 @@ if (isGoogleEnabled) {
               email,
               fullName: profile.displayName || profile.name?.givenName || 'Google User',
               googleId: profile.id,
-              isVerified: true,
+              // Mark as unverified until completing internal OTP/password flow
+              isVerified: false,
               role: 'customer',
             });
           } else {
@@ -41,9 +42,7 @@ if (isGoogleEnabled) {
             if (!user.googleId) {
               user.googleId = profile.id;
             }
-            if (!user.isVerified) {
-              user.isVerified = true;
-            }
+            // Do not auto-verify existing user here; keep their current verification status
           }
 
           await user.save();
