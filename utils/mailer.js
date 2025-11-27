@@ -60,10 +60,10 @@ async function sendOrderConfirmationEmail(to, order) {
     lines.push(`Phí vận chuyển: ${order.shippingFee.toLocaleString('vi-VN')} VND`);
   }
   if (order.pointUsed) {
-    lines.push(`Điểm đã sử dụng: ${order.pointUsed.toLocaleString('vi-VN')}`);
+    lines.push(`Điểm đã dùng: ${(order.pointUsed/1000).toLocaleString('vi-VN')} điểm (=${order.pointUsed.toLocaleString('vi-VN')} VND)`);
   }
   if (order.pointEarned) {
-    lines.push(`Điểm nhận được: ${order.pointEarned.toLocaleString('vi-VN')}`);
+    lines.push(`Điểm nhận được: ${order.pointEarned.toLocaleString('vi-VN')} điểm`);
   }
   lines.push('Sản phẩm:');
   order.items.forEach((it) => {
@@ -80,8 +80,8 @@ async function sendOrderConfirmationEmail(to, order) {
     <p><strong>Tổng tiền:</strong> ${order.totalPrice.toLocaleString('vi-VN')} VND</p>
     ${order.discount ? `<p><strong>Giảm giá:</strong> -${order.discount.toLocaleString('vi-VN')} VND</p>` : ''}
     ${order.shippingFee ? `<p><strong>Phí vận chuyển:</strong> ${order.shippingFee.toLocaleString('vi-VN')} VND</p>` : ''}
-    ${order.pointUsed ? `<p><strong>Điểm sử dụng:</strong> ${order.pointUsed.toLocaleString('vi-VN')}</p>` : ''}
-    ${order.pointEarned ? `<p><strong>Điểm nhận được:</strong> ${order.pointEarned.toLocaleString('vi-VN')}</p>` : ''}
+    ${order.pointUsed ? `<p><strong>Điểm dùng:</strong> ${(order.pointUsed/1000).toLocaleString('vi-VN')} điểm (=${order.pointUsed.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })})</p>` : ''}
+    ${order.pointEarned ? `<p><strong>Điểm nhận được:</strong> ${order.pointEarned.toLocaleString('vi-VN')} điểm</p>` : ''}
     <h3>Sản phẩm</h3>
     <ul>${htmlItems}</ul>
     <h3>Địa chỉ giao hàng</h3>

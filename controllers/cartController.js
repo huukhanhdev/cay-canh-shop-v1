@@ -598,13 +598,16 @@ exports.postCheckout = async (req, res) => {
     const appliedDiscount = req.session?.checkoutCoupon?.discount || 0;
     const subtotal = cart.totalPrice || 0;
     // Redeem points: from request body (pointsToUse), limited by user loyaltyPoints and subtotal after coupon
-    const requestedPoints = Math.max(0, Number(req.body.pointsToUse || 0) || 0);
-    const availablePoints = Math.max(0, Number(userDoc?.loyaltyPoints || 0));
-    const maxRedeemable = Math.max(0, subtotal - appliedDiscount);
-    const pointUsed = Math.min(requestedPoints, availablePoints, maxRedeemable);
+    // 1 điểm = 1.000 VND; chỉ giảm đến 0đ (chỉ giảm phần hàng, vẫn phải trả thuế+ship)
+    const requestedPoints = Math.max(0, Math.floor(Number(req.body.pointsToUse || 0) || 0));
+    const availablePoints = Math.max(0, Math.floor(Number(userDoc?.loyaltyPoints || 0)));
+    const amountAfterDiscount = Math.max(0, subtotal - appliedDiscount);
+    const maxPointsRedeemable = Math.floor(amountAfterDiscount / 1000);
+    const pointsToApply = Math.min(requestedPoints, availablePoints, maxPointsRedeemable);
+    const pointUsedAmount = pointsToApply * 1000; // 1 điểm = 1.000 VND
 
-    const { shipping, tax, total } = computeSummary(subtotal, appliedDiscount + pointUsed);
-    const pointEarned = Math.floor((total || 0) * 0.10);
+    const { shipping, tax, total } = computeSummary(subtotal, appliedDiscount + pointUsedAmount);
+    const pointEarned = Math.floor(((total || 0) * 0.10) / 1000); // earn points = 10% VND converted to points
     const order = new Order({
       userID: userId,
       address: {
@@ -633,7 +636,7 @@ exports.postCheckout = async (req, res) => {
       discount: appliedDiscount,
       totalPrice: total,
       pointEarned,
-      pointUsed,
+      pointUsed: pointUsedAmount,
       note: filledPayload.note,
       status: 'pending',
       statusHistory: [
@@ -648,10 +651,10 @@ exports.postCheckout = async (req, res) => {
     try {
       if (userDoc) {
         // Deduct used points immediately
-        if (pointUsed > 0) {
-          userDoc.loyaltyPoints = Math.max(0, (userDoc.loyaltyPoints || 0) - pointUsed);
+        if (pointsToApply > 0) {
+          userDoc.loyaltyPoints = Math.max(0, (userDoc.loyaltyPoints || 0) - pointsToApply);
         }
-        // Add earned points immediately (no extra restrictions)
+        // Add earned points immediately (no extra restrictions). pointEarned is in points
         if (pointEarned > 0) {
           userDoc.loyaltyPoints = Math.max(0, (userDoc.loyaltyPoints || 0)) + pointEarned;
         }

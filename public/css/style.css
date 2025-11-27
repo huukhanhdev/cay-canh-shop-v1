@@ -1158,6 +1158,51 @@ a:focus, button:focus, input:focus, select:focus {
   padding-left: 0;
 }
 
+.checkout-summary .coupon-box {
+  margin: 16px 0;
+  padding: 12px;
+  background: rgba(47, 111, 79, 0.04);
+  border-radius: 12px;
+  border: 1px solid rgba(47, 111, 79, 0.1);
+}
+
+.checkout-summary .coupon-box label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--primary-dark);
+}
+
+.checkout-summary .coupon-box input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+
+.checkout-summary .coupon-box button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.checkout-summary .summary-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(47, 111, 79, 0.08);
+}
+
+.checkout-summary .summary-line.total {
+  font-size: 1.15rem;
+  border-bottom: none;
+  border-top: 2px solid var(--primary);
+  margin-top: 8px;
+  padding-top: 12px;
+}
+
 .success-card {
   margin: 48px auto;
   max-width: 480px;
