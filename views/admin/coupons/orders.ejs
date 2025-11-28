@@ -1,0 +1,39 @@
+<%- include('../../partials/header', { title }) %>
+
+<section class="admin-header">
+  <div>
+    <h2>Đơn sử dụng mã <code><%= coupon.code %></code></h2>
+    <p>Mã giảm: <strong><%= coupon.discountType === 'fixed' ? (coupon.discountValue.toLocaleString('vi-VN',{style:'currency',currency:'VND'})) : (coupon.discountValue + '%') %></strong> · Đã dùng <%= coupon.timeUsed || 0 %>/<%= coupon.maxUsage || 0 %></p>
+  </div>
+  <a class="btn btn-secondary" href="/admin/coupons">← Quay lại danh sách mã</a>
+</section>
+
+<div class="table-wrapper">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Mã đơn</th>
+        <th>Khách hàng</th>
+        <th>Ngày đặt</th>
+        <th>Tổng tiền</th>
+        <th>Trạng thái</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (orders.length === 0) { %>
+        <tr><td colspan="5" style="text-align:center;color:var(--muted)">Chưa có đơn nào dùng mã này.</td></tr>
+      <% } %>
+      <% orders.forEach(o => { %>
+        <tr>
+          <td>#<%= o._id.toString().slice(-6) %></td>
+          <td><%= o.userID ? (o.userID.fullName || o.userID.email) : 'N/A' %></td>
+          <td><%= new Date(o.createdAt).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}) %></td>
+          <td><%= Number(o.totalPrice||0).toLocaleString('vi-VN',{style:'currency',currency:'VND'}) %></td>
+          <td><span class="status status-<%= o.status %>"><%= o.status %></span></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('../../partials/footer') %>

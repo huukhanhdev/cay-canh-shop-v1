@@ -24,7 +24,50 @@
   <% } %>
 <% } %>
 
-<div class="table-wrapper">
+<div class="admin-products-layout">
+  <form class="admin-filters" method="GET" action="/admin/products">
+  <input type="hidden" name="page" value="1" />
+  <label style="display:flex; flex-direction:column; gap:6px">
+    Tìm kiếm
+    <input type="search" name="q" value="<%= (filterState && filterState.q) || '' %>" placeholder="Tên, mô tả, slug..." />
+  </label>
+  <label style="display:flex; flex-direction:column; gap:6px">
+    Loại
+    <select name="type">
+      <option value="" <%= !filterState || filterState.type === '' ? 'selected' : '' %>>Tất cả</option>
+      <option value="indoor" <%= filterState && filterState.type === 'indoor' ? 'selected' : '' %>>Cây trong nhà</option>
+      <option value="outdoor" <%= filterState && filterState.type === 'outdoor' ? 'selected' : '' %>>Cây ngoài trời</option>
+      <option value="pot" <%= filterState && filterState.type === 'pot' ? 'selected' : '' %>>Chậu cây</option>
+    </select>
+  </label>
+  <label style="display:flex; flex-direction:column; gap:6px">
+    Thương hiệu
+    <select name="brand">
+      <option value="">Tất cả</option>
+      <% (brandOptions || []).forEach((b) => { %>
+        <option value="<%= b %>" <%= filterState && filterState.brand === b ? 'selected' : '' %>><%= b %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label style="display:flex; flex-direction:column; gap:6px">
+    Sắp xếp
+    <select name="sort" onchange="this.form.submit()">
+      <% (sortOptions || []).forEach((opt) => { %>
+        <option value="<%= opt.key %>" <%= sortKey === opt.key ? 'selected' : '' %>><%= opt.label %></option>
+      <% }) %>
+    </select>
+  </label>
+  <div class="filters-actions">
+    <button class="btn btn-primary" type="submit">Áp dụng</button>
+    <a class="btn btn-secondary" href="/admin/products">Xóa lọc</a>
+  </div>
+  <% if (typeof pagination !== 'undefined') { %>
+    <div class="filters-pageinfo">Trang <%= pagination.page %>/<%= pagination.totalPages %></div>
+  <% } %>
+  
+  </form>
+
+  <div class="table-wrapper">
   <table class="table">
     <thead>
       <tr>
@@ -66,4 +109,18 @@
   </table>
 </div>
 
-<%- include('../../partials/footer') %>
+<% if (typeof pagination !== 'undefined' && pagination.totalPages >= 1) { %>
+  <nav class="pagination" style="margin:16px 0; display:flex; gap:8px; flex-wrap:wrap">
+    <% for (let p = 1; p <= pagination.totalPages; p++) { 
+         const qs = (typeof baseQueryString !== 'undefined' && baseQueryString) ? `${baseQueryString}&page=${p}` : `page=${p}`;
+    %>
+      <a href="/admin/products?<%= qs %>" class="<%= p === pagination.page ? 'active' : '' %>"><%= p %></a>
+    <% } %>
+  </nav>
+<% } %>
+
+    </div> <!-- .table-wrapper -->
+
+  </div> <!-- .admin-products-layout -->
+
+  <%- include('../../partials/footer') %>

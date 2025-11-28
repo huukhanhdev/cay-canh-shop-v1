@@ -94,6 +94,15 @@ exports.updateProfile = async (req, res) => {
     }
     user.fullName = nextFullName;
 
+    // Optional phone field on user profile (top-level)
+    const nextPhone = sanitize(req.body.phone || '');
+    if (nextPhone) {
+      user.phone = nextPhone;
+    } else {
+      // allow clearing phone by submitting empty value
+      user.phone = '';
+    }
+
     const addressPayload = buildAddressPayload(req.body);
     if (addressPayload) {
       const addressDoc = ensureDefaultAddressDoc(user);

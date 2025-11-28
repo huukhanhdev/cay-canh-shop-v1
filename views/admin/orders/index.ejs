@@ -7,6 +7,39 @@
   </div>
 </section>
 
+<form class="admin-form" method="GET" action="/admin/orders" style="margin-bottom:16px">
+  <div class="form-grid">
+    <label>Trạng thái
+      <select name="status">
+        <option value="">Tất cả</option>
+        <% statuses.forEach(st => { %>
+          <option value="<%= st %>" <%= filters?.status === st ? 'selected' : '' %>><%= st %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label>Khoảng thời gian
+      <select name="range" id="order-range-select">
+        <option value="">--</option>
+        <option value="today" <%= filters?.range === 'today' ? 'selected' : '' %>>Hôm nay</option>
+        <option value="yesterday" <%= filters?.range === 'yesterday' ? 'selected' : '' %>>Hôm qua</option>
+        <option value="week" <%= filters?.range === 'week' ? 'selected' : '' %>>Tuần này</option>
+        <option value="month" <%= filters?.range === 'month' ? 'selected' : '' %>>Tháng này</option>
+        <option value="custom" <%= filters?.range === 'custom' ? 'selected' : '' %>>Tùy chọn</option>
+      </select>
+    </label>
+    <label id="order-start-wrap" style="display:none">Từ ngày
+      <input type="date" name="start" value="<%= filters?.start || '' %>">
+    </label>
+    <label id="order-end-wrap" style="display:none">Đến ngày
+      <input type="date" name="end" value="<%= filters?.end || '' %>">
+    </label>
+  </div>
+  <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:12px">
+    <button type="button" class="btn btn-secondary" onclick="window.location='/admin/orders'">Xóa lọc</button>
+    <button type="submit" class="btn btn-primary">Lọc</button>
+  </div>
+</form>
+
 <% if (typeof error !== 'undefined' && error) { %>
   <p class="alert alert-error"><%= error %></p>
 <% } else if (success === 'updated') { %>
@@ -46,5 +79,35 @@
     </tbody>
   </table>
 </div>
+
+<% if (pagination && pagination.totalPages > 1) { %>
+  <nav class="pagination" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+    <% for (let p = 1; p <= pagination.totalPages; p++) { %>
+      <% const params = new URLSearchParams({ page: p }); %>
+      <% if (filters?.status) params.set('status', filters.status); %>
+      <% if (filters?.range) params.set('range', filters.range); %>
+      <% if (filters?.start) params.set('start', filters.start); %>
+      <% if (filters?.end) params.set('end', filters.end); %>
+      <a class="btn <%= pagination.page === p ? 'btn-primary' : 'btn-secondary' %>" href="/admin/orders?<%= params.toString() %>"><%= p %></a>
+    <% } %>
+  </nav>
+  <p class="muted" style="margin-top:4px">Trang <%= pagination.page %>/<%= pagination.totalPages %> • Tổng <%= pagination.total %> đơn</p>
+<% } %>
+
+<script>
+  (function(){
+    const select = document.getElementById('order-range-select');
+    const startWrap = document.getElementById('order-start-wrap');
+    const endWrap = document.getElementById('order-end-wrap');
+    function toggle(){
+      const val = select.value;
+      const show = val === 'custom';
+      startWrap.style.display = show ? '' : 'none';
+      endWrap.style.display = show ? '' : 'none';
+    }
+    select.addEventListener('change', toggle);
+    toggle();
+  })();
+</script>
 
 <%- include('../../partials/footer') %>

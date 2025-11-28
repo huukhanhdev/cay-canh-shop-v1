@@ -1,4 +1,5 @@
-const Coupon = require('../models/Coupon');
+const Coupon = require('../../models/Coupon');
+const Order = require('../../models/Order');
 
 function generateCode(len = 5) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -51,6 +52,26 @@ exports.remove = async (req, res) => {
     res.redirect('/admin/coupons?msg=deleted');
   } catch (err) {
     console.error('Delete coupon error:', err);
+    res.redirect('/admin/coupons?msg=error');
+  }
+};
+
+exports.ordersUsed = async (req, res) => {
+  try {
+    const coupon = await Coupon.findById(req.params.id).lean();
+    if (!coupon) return res.redirect('/admin/coupons?msg=notfound');
+    const orders = await Order.find({ couponID: coupon._id })
+      .populate('userID')
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+    res.render('admin/coupons/orders', {
+      title: `Đơn sử dụng mã ${coupon.code}`,
+      coupon,
+      orders,
+    });
+  } catch (err) {
+    console.error('Coupon ordersUsed error:', err);
     res.redirect('/admin/coupons?msg=error');
   }
 };

@@ -7,6 +7,7 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const { passport, isGoogleEnabled } = require('./config/passport');
 const { requireLogin, requireAdmin, exposeUser } = require('./middleware/auth');
+const requestLogger = require('./middleware/requestLogger');
 const authRoutes = require('./routes/authRoutes');
 const shopRoutes = require('./routes/shopRoutes');
 const cartRoutes = require('./routes/cartRoutes');
@@ -18,7 +19,8 @@ const adminOrderRoutes = require('./routes/adminOrderRoutes');
 const adminCustomerRoutes = require('./routes/adminCustomerRoutes');
 const adminCommentRoutes = require('./routes/adminCommentRoutes');
 const adminCouponRoutes = require('./routes/adminCouponRoutes');
-const adminDashboardController = require('./controllers/adminDashboardController');
+const adminDashboardController = require('./controllers/admin/adminDashboardController');
+const adminDashboardApiRoutes = require('./routes/adminDashboardApiRoutes');
 const Product = require('./models/Product');
 const Category = require('./models/Category');
 const runAllSeeds = require('./helpers/seedData');
@@ -75,6 +77,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(requestLogger);
 
 // session
 app.use(session({
@@ -114,6 +117,7 @@ app.use('/admin/orders', requireLogin, requireAdmin, adminOrderRoutes);
 app.use('/admin/customers', requireLogin, requireAdmin, adminCustomerRoutes);
 app.use('/admin/comments', requireLogin, requireAdmin, adminCommentRoutes);
 app.use('/admin/coupons', requireLogin, requireAdmin, adminCouponRoutes);
+app.use('/admin/api/dashboard', requireLogin, requireAdmin, adminDashboardApiRoutes);
 
 // landing page
 app.get('/', async (_req, res) => {
@@ -163,6 +167,10 @@ app.get('/', async (_req, res) => {
 
 // routes auth không prefix (giữ tương thích /login,...)
 app.use('/', authRoutes);
+
+// 404 & error handlers
+app.use(require('./middleware/notFound'));
+app.use(require('./middleware/errorHandler'));
 
 // connect DB & start
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/caycanhshop')

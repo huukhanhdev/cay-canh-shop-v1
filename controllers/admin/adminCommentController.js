@@ -1,10 +1,9 @@
-const Comment = require('../models/Comment');
-const Product = require('../models/Product');
+const Comment = require('../../models/Comment');
+const Product = require('../../models/Product');
 
 exports.list = async (req, res) => {
   try {
     const comments = await Comment.find().sort({ createdAt: -1 }).lean();
-    // populate product names
     const productIds = Array.from(new Set(comments.map((c) => String(c.productID)))).filter(Boolean);
     const products = await Product.find({ _id: { $in: productIds } }).select('name slug').lean();
     const productMap = products.reduce((acc, p) => { acc[String(p._id)] = p; return acc; }, {});

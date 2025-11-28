@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const adminProduct = require('../controllers/adminProductController');
+const adminProduct = require('../controllers/admin/adminProductController');
 
 const router = express.Router();
 

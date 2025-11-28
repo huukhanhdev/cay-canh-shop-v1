@@ -1,5 +1,5 @@
-const User = require('../models/User');
-const { locations, normalizeLocation } = require('../helpers/location');
+const User = require('../../models/User');
+const { locations, normalizeLocation } = require('../../helpers/location');
 
 function buildFilters(query = {}) {
   const filter = {};

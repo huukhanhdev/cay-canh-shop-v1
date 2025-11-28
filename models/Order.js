@@ -78,6 +78,12 @@ const orderSchema = new Schema(
   { timestamps: true }
 );
 
+// Indexes for dashboard & filtering performance
+orderSchema.index({ createdAt: -1 });
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ couponID: 1, createdAt: -1 });
+orderSchema.index({ userID: 1, createdAt: -1 });
+
 orderSchema.pre("save", function updateTimestamp(next) {
   this.updateAt = new Date();
   next();

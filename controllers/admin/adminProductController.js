@@ -1,9 +1,9 @@
 const fs = require('fs');
 const path = require('path');
-const Product = require('../models/Product');
-const Category = require('../models/Category');
+const Product = require('../../models/Product');
+const Category = require('../../models/Category');
 
-const PUBLIC_ROOT = path.join(__dirname, '..', 'public');
+const PUBLIC_ROOT = path.join(__dirname, '..', '..', 'public');
 const UPLOAD_PREFIX = '/uploads/products/';
 const TYPE_UPLOAD_DIR = {
   indoor: '/uploads/cay-trong-nha/',
@@ -121,16 +121,89 @@ function normalizeType(value) {
   return 'indoor';
 }
 
+const ADMIN_PAGE_SIZE = 10;
+const ADMIN_SORT_OPTIONS = {
+  updated_desc: { updatedAt: -1 },
+  created_desc: { createdAt: -1 },
+  name_asc: { name: 1 },
+  name_desc: { name: -1 },
+  price_asc: { price: 1 },
+  price_desc: { price: -1 },
+};
+
+const ADMIN_SORT_LABELS = [
+  { key: 'updated_desc', label: 'Cập nhật mới nhất' },
+  { key: 'created_desc', label: 'Tạo mới nhất' },
+  { key: 'name_asc', label: 'Tên A-Z' },
+  { key: 'name_desc', label: 'Tên Z-A' },
+  { key: 'price_asc', label: 'Giá tăng dần' },
+  { key: 'price_desc', label: 'Giá giảm dần' },
+];
+
+function buildAdminFilters(query = {}) {
+  const filters = {};
+  const state = {
+    q: query.q || '',
+    type: ['indoor', 'outdoor', 'pot'].includes(query.type) ? query.type : '',
+    brand: query.brand || '',
+  };
+
+  if (state.q) filters.$text = { $search: state.q };
+  if (state.type) filters.type = state.type;
+  if (state.brand) filters.brand = state.brand;
+
+  return { filters, state };
+}
+
+function buildAdminSort(key = 'updated_desc') {
+  return ADMIN_SORT_OPTIONS[key] || ADMIN_SORT_OPTIONS.updated_desc;
+}
+
 exports.list = async (req, res) => {
   try {
-    const products = await Product.find()
-      .populate('categoryID')
-      .sort({ createdAt: -1 });
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const sortKey = req.query.sort || 'updated_desc';
+    const sort = buildAdminSort(sortKey);
+    const { filters, state: filterState } = buildAdminFilters(req.query);
+    const skip = (page - 1) * ADMIN_PAGE_SIZE;
+
+    const [products, total, brands] = await Promise.all([
+      Product.find(filters)
+        .populate('categoryID')
+        .sort(sort)
+        .skip(skip)
+        .limit(ADMIN_PAGE_SIZE)
+        .lean(),
+      Product.countDocuments(filters),
+      Product.distinct('brand', { brand: { $exists: true, $ne: '' } }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE));
+
+    const baseQuery = new URLSearchParams();
+    Object.entries(req.query).forEach(([key, value]) => {
+      if (key === 'page') return;
+      if (Array.isArray(value)) {
+        value.forEach((val) => {
+          if (typeof val !== 'undefined' && val !== null) baseQuery.append(key, val);
+        });
+      } else if (typeof value !== 'undefined' && value !== null) {
+        baseQuery.append(key, value);
+      }
+    });
+    const baseQueryString = baseQuery.toString();
+
     res.render('admin/products/index', {
       title: 'Quản lý sản phẩm',
       products,
       success: req.query.success || null,
       categoryLabels: CATEGORY_LABEL,
+      pagination: { page, totalPages, hasPrev: page > 1, hasNext: page < totalPages },
+      sortKey,
+      sortOptions: ADMIN_SORT_LABELS,
+      filterState,
+      brandOptions: brands.filter(Boolean).sort(),
+      baseQueryString,
     });
   } catch (err) {
     console.error('List product error:', err);
@@ -138,6 +211,13 @@ exports.list = async (req, res) => {
       title: 'Quản lý sản phẩm',
       products: [],
       error: 'Không thể tải danh sách sản phẩm.',
+      pagination: { page: 1, totalPages: 1, hasPrev: false, hasNext: false },
+      sortKey: 'updated_desc',
+      sortOptions: ADMIN_SORT_LABELS,
+      filterState: { q: '', type: '', brand: '' },
+      brandOptions: [],
+      baseQueryString: '',
+      categoryLabels: CATEGORY_LABEL,
     });
   }
 };

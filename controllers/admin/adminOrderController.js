@@ -1,6 +1,6 @@
-const Order = require('../models/Order');
-const User = require('../models/User');
-const Product = require('../models/Product');
+const Order = require('../../models/Order');
+const User = require('../../models/User');
+const Product = require('../../models/Product');
 
 const ORDER_STATUSES = ['pending', 'preparing', 'shipping', 'done', 'canceled'];
 
@@ -69,18 +69,76 @@ async function restoreOrderStock(order) {
   order.stockDeducted = false;
 }
 
+function buildTimeFilter(range, start, end) {
+  const now = new Date();
+  const dayStart = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+  const dayEnd = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+  let from; let to;
+  switch (range) {
+    case 'today':
+      from = dayStart(now); to = dayEnd(now); break;
+    case 'yesterday': {
+      const y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      from = dayStart(y); to = dayEnd(y); break;
+    }
+    case 'week': {
+      const day = now.getDay();
+      const diffToMonday = day === 0 ? -6 : 1 - day;
+      const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday);
+      from = dayStart(monday);
+      to = dayEnd(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6));
+      break;
+    }
+    case 'month': {
+      from = new Date(now.getFullYear(), now.getMonth(), 1);
+      to = dayEnd(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+      break;
+    }
+    case 'custom': {
+      if (start) from = dayStart(new Date(start));
+      if (end) to = dayEnd(new Date(end));
+      break;
+    }
+    default: return null;
+  }
+  if (from && to) return { createdAt: { $gte: from, $lte: to } };
+  return null;
+}
+
 exports.list = async (req, res) => {
   try {
-    const orders = await Order.find()
-      .populate('userID')
-      .sort({ createdAt: -1 })
-      .lean();
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = 20;
+    const skip = (page - 1) * limit;
+    const statusFilter = req.query.status && ORDER_STATUSES.includes(req.query.status) ? req.query.status : null;
+    const range = req.query.range; // today | yesterday | week | month | custom
+    const start = req.query.start || null;
+    const end = req.query.end || null;
+
+    const mongoFilter = {};
+    if (statusFilter) mongoFilter.status = statusFilter;
+    const timeCond = buildTimeFilter(range, start, end);
+    if (timeCond) Object.assign(mongoFilter, timeCond);
+
+    const [orders, total] = await Promise.all([
+      Order.find(mongoFilter)
+        .populate('userID')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Order.countDocuments(mongoFilter),
+    ]);
+
+    const totalPages = Math.ceil(total / limit) || 1;
 
     res.render('admin/orders/index', {
       title: 'Quản lý đơn hàng',
       orders,
       statuses: ORDER_STATUSES,
       success: req.query.msg || null,
+      pagination: { page, totalPages, total },
+      filters: { status: statusFilter, range, start, end },
     });
   } catch (err) {
     console.error('Admin list orders error:', err);
@@ -89,6 +147,8 @@ exports.list = async (req, res) => {
       orders: [],
       statuses: ORDER_STATUSES,
       error: 'Không thể tải danh sách đơn hàng.',
+      pagination: { page: 1, totalPages: 1, total: 0 },
+      filters: { status: null, range: null, start: null, end: null },
     });
   }
 };
@@ -127,14 +187,12 @@ exports.updateStatus = async (req, res) => {
     const previousStatus = order.status;
     order.status = status;
 
-    // Append vào lịch sử nếu trạng thái thay đổi
     if (previousStatus !== status) {
       const note = status === 'canceled' ? (order.cancelReason || 'Hủy đơn') : undefined;
       order.statusHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
       order.statusHistory.push({ status, updatedAt: new Date(), note });
     }
 
-    // Khi chuyển sang 'done' -> trừ tồn (chỉ trừ 1 lần)
     if (previousStatus !== 'done' && status === 'done' && !order.pointRewarded) {
       const points = order.pointEarned || Math.floor((order.totalPrice || 0) / 10000);
       if (points > 0) {
@@ -148,7 +206,6 @@ exports.updateStatus = async (req, res) => {
       await deductOrderStock(order);
     }
 
-    // Khi rollback từ 'done' sang trạng thái khác -> trả lại tồn nếu đã trừ
     if (previousStatus === 'done' && status !== 'done' && order.pointRewarded) {
       const points = order.pointEarned || Math.floor((order.totalPrice || 0) / 10000);
       if (points > 0) {

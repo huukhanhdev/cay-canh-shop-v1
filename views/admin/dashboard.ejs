@@ -1,27 +1,292 @@
 <%- include('../partials/header', { title: 'Bảng điều khiển' }) %>
 
-<% const statusLabels = { pending: 'Chờ xử lý', preparing: 'Đang chuẩn bị', shipping: 'Đang giao', done: 'Hoàn tất', canceled: 'Đã hủy' }; %>
-
-<section class="dashboard-hero">
+<section class="admin-header" style="align-items:flex-end;">
   <div>
     <p class="eyebrow">Xin chào <%= locals.username || 'Admin' %></p>
     <h1>Tổng quan hoạt động</h1>
-    <p class="muted">
-      Theo dõi sức khỏe cửa hàng, xử lý đơn hàng nhanh chóng và nắm bắt các đầu việc ưu tiên.
-    </p>
+    <p class="muted">Theo dõi nhanh sức khỏe cửa hàng và truy cập vào các nghiệp vụ quan trọng.</p>
   </div>
+  <div class="dashboard-toggle">
+    <a class="btn <%= viewMode === 'simple' ? 'btn-primary' : 'btn-secondary' %>" href="/admin/dashboard?view=simple">Simple</a>
+    <a class="btn <%= viewMode === 'advanced' ? 'btn-primary' : 'btn-secondary' %>" href="/admin/dashboard?view=advanced">Advanced</a>
+  </div>
+</section>
+
+<% if (viewMode === 'advanced') { %>
+  <div class="adv-range-bar">
+    <form id="adv-range-form" onsubmit="return false;">
+      <label>Khoảng thời gian
+        <select name="range" id="adv-range-select">
+          <option value="year">Năm hiện tại</option>
+          <option value="quarter">Quý</option>
+          <option value="month">Tháng</option>
+          <option value="week">Tuần</option>
+          <option value="custom">Tùy chọn</option>
+        </select>
+      </label>
+      <label id="adv-quarter-wrap" style="display:none">Quý
+        <select name="quarter" id="adv-quarter">
+          <option value="1">Q1</option>
+          <option value="2">Q2</option>
+          <option value="3">Q3</option>
+          <option value="4">Q4</option>
+        </select>
+      </label>
+      <label id="adv-month-wrap" style="display:none">Tháng
+        <input type="number" min="1" max="12" id="adv-month" placeholder="1-12" />
+      </label>
+      <label id="adv-week-wrap" style="display:none">Ngày bất kỳ trong tuần
+        <input type="date" id="adv-week" />
+      </label>
+      <div id="adv-custom-wrap" style="display:none;gap:8px;">
+        <label>Từ <input type="date" id="adv-start" /></label>
+        <label>Đến <input type="date" id="adv-end" /></label>
+      </div>
+      <button type="button" class="btn btn-primary" id="adv-apply-btn">Áp dụng</button>
+    </form>
+  </div>
+  <p class="alert alert-info" style="margin-top:12px">Chế độ Advanced đang trong giai đoạn đầu — số liệu sẽ thay đổi theo bộ lọc.</p>
+
+  <script>
+    /* advanced dashboard script (moved up so Advanced view replaces Simple view) */
+    async function fetchJSON(url){
+      const res = await fetch(url);
+      if(!res.ok) throw new Error('Request failed');
+      return res.json();
+    }
+    function renderKPIs(data){
+      const el = document.getElementById('adv-kpis');
+      if(!el) return;
+      // prettier KPI cards
+      el.innerHTML = `
+        <div class="adv-kpis-grid">
+          <div class="adv-kpi">
+            <div class="label">Doanh thu</div>
+            <div class="value">${Number(data.totalRevenue||0).toLocaleString('vi-VN',{style:'currency',currency:'VND'})}</div>
+            <div class="meta">So với kỳ trước: <span class="${data.revenueTrend>=0? 'trend-up':'trend-down'}">${data.revenueTrend==null? '—': data.revenueTrend + '%'}</span></div>
+          </div>
+          <div class="adv-kpi">
+            <div class="label">Đơn hàng</div>
+            <div class="value">${data.totalOrders||0}</div>
+            <div class="meta">Trong phạm vi đã chọn</div>
+          </div>
+          <div class="adv-kpi">
+            <div class="label">Giá trị TB</div>
+            <div class="value">${Number(data.avgOrderValue||0).toLocaleString('vi-VN',{style:'currency',currency:'VND'})}</div>
+            <div class="meta">Giá trị trung bình/đơn</div>
+          </div>
+          <div class="adv-kpi">
+            <div class="label">Tỷ lệ chuyển đổi</div>
+            <div class="value">${(data.conversionRate||0) + '%'}</div>
+            <div class="meta">Từ lượt truy cập thành đơn</div>
+          </div>
+        </div>
+      `;
+    }
+    function renderList(id, items, mapFn){
+      const el = document.getElementById(id);
+      if(!el) return;
+      if(!items || !items.length){ el.innerHTML = '<em>Không có dữ liệu</em>'; return; }
+      el.innerHTML = '<ul>'+items.map(mapFn).join('')+'</ul>';
+    }
+    function collectParams(){
+      const range = document.getElementById('adv-range-select').value;
+      const params = new URLSearchParams();
+      params.set('range', range);
+      if(range === 'quarter') params.set('quarter', document.getElementById('adv-quarter').value);
+      if(range === 'month') params.set('month', (Number(document.getElementById('adv-month').value)|| new Date().getMonth()+1) -1);
+      if(range === 'week') params.set('week', document.getElementById('adv-week').value);
+      if(range === 'custom') {
+        const s = document.getElementById('adv-start').value;
+        const e = document.getElementById('adv-end').value;
+        if(s) params.set('start', s);
+        if(e) params.set('end', e);
+      }
+      return params.toString();
+    }
+    function showRangeFields(){
+      const r = document.getElementById('adv-range-select').value;
+      document.getElementById('adv-quarter-wrap').style.display = r==='quarter' ? '' : 'none';
+      document.getElementById('adv-month-wrap').style.display = r==='month' ? '' : 'none';
+      document.getElementById('adv-week-wrap').style.display = r==='week' ? '' : 'none';
+      document.getElementById('adv-custom-wrap').style.display = r==='custom' ? 'flex' : 'none';
+    }
+    async function loadAdvanced(){
+      try {
+        const query = collectParams();
+        const [kpis, trends, status, mix, coupons, cohorts] = await Promise.all([
+          fetchJSON('/admin/api/dashboard/kpis?' + query),
+          fetchJSON('/admin/api/dashboard/trends?' + query),
+          fetchJSON('/admin/api/dashboard/status-breakdown?' + query),
+          fetchJSON('/admin/api/dashboard/product-mix?' + query),
+          fetchJSON('/admin/api/dashboard/coupons?' + query),
+          fetchJSON('/admin/api/dashboard/cohorts?' + query),
+        ]);
+        renderKPIs(kpis);
+        renderList('adv-status', status.statuses, s => `<li>${s.status}: ${s.count}</li>`);
+        renderList('adv-mix', mix.items, i => `<li>${i.label}: ${i.quantity}</li>`);
+        renderList('adv-coupons', coupons.rows, r => `<li>${r.code} • dùng ${r.usage} / ${r.maxUsage||'-'} • giảm ${r.totalDiscount} • DT ${r.revenueImpact}</li>`);
+        const cohortEl = document.getElementById('adv-cohorts');
+        if(cohortEl) cohortEl.innerHTML = `<strong>Mới:</strong> ${cohorts.newCustomers} · <strong>Quay lại:</strong> ${cohorts.returningCustomers}`;
+        const trendEl = document.getElementById('adv-trends');
+        if(trendEl){
+          if(!trends.points.length){ trendEl.innerHTML = '<em>Chưa có dữ liệu.</em>'; }
+          else {
+            trendEl.innerHTML = '<canvas id="trendChart" height="160"></canvas>';
+            renderTrendChart(trends.points);
+          }
+        }
+        const mixEl = document.getElementById('adv-mix');
+        if(mixEl){
+          if(!mix.items.length){ mixEl.innerHTML = '<em>Không có dữ liệu</em>'; }
+          else {
+            mixEl.innerHTML = '<canvas id="mixChart" height="160"></canvas>';
+            renderMixChart(mix.items);
+          }
+        }
+      } catch(err){
+        console.error(err);
+        const advError = document.getElementById('adv-error');
+        if(advError) advError.textContent = 'Không tải được dữ liệu nâng cao.';
+      }
+    }
+    function ensureChartJs(cb){
+      if(window.Chart){ cb(); return; }
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+      script.onload = cb;
+      document.head.appendChild(script);
+    }
+    function renderTrendChart(points){
+      ensureChartJs(()=>{
+        const ctx = document.getElementById('trendChart');
+        if(!ctx) return;
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: points.map(p=>p.bucket),
+            datasets: [
+              {
+                label: 'Đơn hàng',
+                data: points.map(p=>p.orders),
+                borderColor: '#2d7ff9',
+                backgroundColor: 'rgba(45,127,249,0.15)',
+                tension: 0.3,
+                yAxisID: 'y'
+              },
+              {
+                label: 'Doanh thu',
+                data: points.map(p=>p.revenue),
+                borderColor: '#27ae60',
+                backgroundColor: 'rgba(39,174,96,0.15)',
+                tension: 0.3,
+                yAxisID: 'y1'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            stacked: false,
+            scales: {
+              y: { title: { text: 'Đơn', display: true }, beginAtZero: true },
+              y1: { position: 'right', title: { text: 'Doanh thu', display: true }, beginAtZero: true, grid: { drawOnChartArea: false } }
+            },
+            plugins: { legend: { position: 'bottom' } }
+          }
+        });
+      });
+    }
+    function renderMixChart(items){
+      ensureChartJs(()=>{
+        const ctx = document.getElementById('mixChart');
+        if(!ctx) return;
+        new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: items.map(i=>i.label),
+            datasets: [{
+              label: 'Số lượng',
+              data: items.map(i=>i.quantity),
+              backgroundColor: ['#2d7ff9','#27ae60','#f39c12','#8e44ad','#e74c3c'],
+              borderWidth: 1
+            }]
+          },
+          options: { plugins: { legend: { position: 'bottom' } } }
+        });
+      });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      showRangeFields();
+      loadAdvanced();
+      document.getElementById('adv-range-select').addEventListener('change', showRangeFields);
+      document.getElementById('adv-apply-btn').addEventListener('click', loadAdvanced);
+      // Trend custom range form events
+      const trendForm = document.getElementById('trend-range-form');
+      if(trendForm){
+        trendForm.addEventListener('submit', async (e)=>{
+          e.preventDefault();
+          const start = document.getElementById('trend-start').value;
+          const end = document.getElementById('trend-end').value;
+          if(!start || !end){ alert('Chọn đầy đủ ngày bắt đầu và kết thúc'); return; }
+          const url = '/admin/api/dashboard/trends?range=custom&start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end);
+          const trends = await fetchJSON(url);
+          const trendEl = document.getElementById('adv-trends');
+          if(!trends.points.length){ trendEl.innerHTML = '<em>Chưa có dữ liệu.</em>'; }
+          else {
+            trendEl.innerHTML = '<canvas id="trendChart" height="160"></canvas>';
+            renderTrendChart(trends.points);
+          }
+        });
+      }
+    });
+  </script>
+
+  <section class="adv-grid">
+    <div class="adv-panel"><h3>KPI</h3><div id="adv-kpis">Đang tải...</div></div>
+    <div class="adv-panel"><h3>Xu hướng</h3>
+      <form id="trend-range-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:flex-end">
+        <label style="display:flex;flex-direction:column">Từ
+          <input type="date" id="trend-start" />
+        </label>
+        <label style="display:flex;flex-direction:column">Đến
+          <input type="date" id="trend-end" />
+        </label>
+        <button type="submit" class="btn btn-secondary">Xem</button>
+      </form>
+      <div id="adv-trends">Đang tải...</div>
+    </div>
+    <div class="adv-panel"><h3>Trạng thái đơn</h3><div id="adv-status">Đang tải...</div></div>
+    <div class="adv-panel"><h3>Cơ cấu sản phẩm</h3><div id="adv-mix">Đang tải...</div></div>
+    <div class="adv-panel"><h3>Mã giảm giá</h3><div id="adv-coupons">Đang tải...</div></div>
+    <div class="adv-panel"><h3>Cohort khách hàng</h3><div id="adv-cohorts">Đang tải...</div></div>
+    <div class="adv-panel"><h3>Thông báo</h3><div id="adv-error"></div><p class="muted">Dữ liệu demo (range=year). Có thể mở rộng với selector range.</p></div>
+  </section>
+<% } %>
+
+<% if (viewMode !== 'advanced') { %>
+<section class="dashboard-hero">
   <div class="hero-highlight">
-    <p>Doanh thu tháng này</p>
-    <h3><%= Number(stats.monthlyRevenue || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></h3>
+    <p class="muted">Doanh thu tháng này</p>
+    <h3><%= Number(hero.monthlyRevenue || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></h3>
     <p class="muted">
-      <% if (stats.revenueTrend === null) { %>
+      <% if (hero.revenueTrend === null) { %>
         Chưa có dữ liệu tháng trước
       <% } else { %>
-        <span class="<%= stats.revenueTrend >= 0 ? 'trend-up' : 'trend-down' %>">
-          <%= stats.revenueTrend %>% so với tháng trước
+        <span class="<%= hero.revenueTrend >= 0 ? 'trend-up' : 'trend-down' %>">
+          <%= hero.revenueTrend %>% so với tháng trước
         </span>
       <% } %>
     </p>
+  </div>
+  <div class="hero-copy">
+    <h2>Hành động nhanh</h2>
+    <p class="muted">Quản lý sản phẩm, khách hàng và đơn hàng của bạn ngay trong một nơi.</p>
+    <div class="hero-actions">
+      <a class="btn btn-secondary" href="/admin/products">Sản phẩm</a>
+      <a class="btn btn-secondary" href="/admin/orders">Đơn hàng</a>
+      <a class="btn btn-secondary" href="/admin/customers">Khách hàng</a>
+    </div>
   </div>
 </section>
 
@@ -31,24 +296,24 @@
 
 <section class="dashboard-grid">
   <article class="stat-card">
-    <p class="muted">Tổng doanh thu</p>
-    <h3><%= Number(stats.totalRevenue || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></h3>
-    <small><%= stats.totalOrders || 0 %> đơn đã xử lý</small>
+    <p class="muted">Tổng khách hàng</p>
+    <h3><%= stats.totalUsers || 0 %></h3>
+    <small>Đang hoạt động</small>
   </article>
   <article class="stat-card">
-    <p class="muted">Giá trị đơn trung bình</p>
-    <h3><%= Number(stats.avgOrderValue || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></h3>
-    <small>Dựa trên các đơn đã hoàn tất</small>
+    <p class="muted">Khách hàng mới (7 ngày)</p>
+    <h3><%= stats.newUsers || 0 %></h3>
+    <small>Tính đến hôm nay</small>
   </article>
   <article class="stat-card">
-    <p class="muted">Khách hàng</p>
-    <h3><%= stats.customerCount || 0 %></h3>
-    <small>Khách hàng đã đăng ký</small>
+    <p class="muted">Tổng đơn (30 ngày)</p>
+    <h3><%= stats.totalOrders30d || 0 %></h3>
+    <small>Tất cả trạng thái</small>
   </article>
   <article class="stat-card">
     <p class="muted">Đơn cần xử lý</p>
     <h3><%= stats.pendingOrders || 0 %></h3>
-    <small>Tổng đơn chờ, chuẩn bị & giao</small>
+    <small>Pending · Preparing · Shipping</small>
   </article>
 </section>
 
@@ -56,25 +321,8 @@
   <article class="panel">
     <header>
       <div>
-        <h2>Trạng thái đơn hàng</h2>
-        <p class="muted">Theo dõi tiến độ fulfillment</p>
-      </div>
-    </header>
-    <ul class="status-list">
-      <% statusBreakdown.forEach((item) => { %>
-        <li>
-          <span><%= item.label %></span>
-          <span class="status-chip status-<%= item.key %>"><%= item.count %></span>
-        </li>
-      <% }) %>
-    </ul>
-  </article>
-
-  <article class="panel">
-    <header>
-      <div>
         <h2>Sản phẩm bán chạy</h2>
-        <p class="muted">Tính theo số lượng bán ra</p>
+        <p class="muted">Top 5 trong 30 ngày qua</p>
       </div>
     </header>
     <% if (!topProducts.length) { %>
@@ -98,14 +346,12 @@
       </ol>
     <% } %>
   </article>
-</section>
 
-<section class="dashboard-two-column">
   <article class="panel">
     <header>
       <div>
         <h2>Đơn hàng gần nhất</h2>
-        <p class="muted">6 đơn hàng mới nhất</p>
+        <p class="muted">6 đơn mới nhất</p>
       </div>
     </header>
     <% if (!recentOrders.length) { %>
@@ -125,7 +371,7 @@
           <tbody>
             <% recentOrders.forEach((order) => { %>
               <tr>
-                <td><strong><%= order._id %></strong></td>
+                <td><strong>#<%= order._id.toString().slice(-6) %></strong></td>
                 <td><%= order.userID ? (order.userID.fullName || order.userID.email) : 'Khách lẻ' %></td>
                 <td><%= Number(order.totalPrice || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
                 <td><span class="status status-<%= order.status %>"><%= statusLabels[order.status] || order.status %></span></td>
@@ -137,50 +383,56 @@
       </div>
     <% } %>
   </article>
+</section>
+
+<section class="dashboard-two-column">
+  <article class="panel">
+    <header>
+      <div>
+        <h2>Khách hàng mới</h2>
+        <p class="muted">5 khách đăng ký gần nhất</p>
+      </div>
+    </header>
+    <% if (!latestCustomers.length) { %>
+      <p class="muted">Chưa có dữ liệu.</p>
+    <% } else { %>
+      <ul class="simple-list">
+        <% latestCustomers.forEach((customer) => { %>
+          <li>
+            <strong><%= customer.fullName %></strong>
+            <span class="muted"><%= customer.email %></span>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </article>
 
   <article class="panel">
     <header>
       <div>
-        <h2>Khách hàng & kho</h2>
-        <p class="muted">Thông tin mới nhất</p>
+        <h2>Cảnh báo tồn kho</h2>
+        <p class="muted">Số lượng còn ≤ 5</p>
       </div>
     </header>
-    <div class="panel-split">
-      <div>
-        <h3>Khách hàng mới</h3>
-        <% if (!latestCustomers.length) { %>
-          <p class="muted">Chưa có dữ liệu.</p>
-        <% } else { %>
-          <ul class="simple-list">
-            <% latestCustomers.forEach((customer) => { %>
-              <li>
-                <strong><%= customer.fullName %></strong>
-                <span class="muted"><%= customer.email %></span>
-              </li>
-            <% }) %>
-          </ul>
-        <% } %>
-      </div>
-      <div>
-        <h3>Cảnh báo tồn kho</h3>
-        <% if (!lowStockProducts.length) { %>
-          <p class="muted">Kho hàng vẫn an toàn.</p>
-        <% } else { %>
-          <ul class="simple-list">
-            <% lowStockProducts.forEach((product) => { %>
-              <li>
-                <strong><%= product.name %></strong>
-                <span class="muted">Còn lại <%= product.inStock %> sản phẩm</span>
-              </li>
-            <% }) %>
-          </ul>
-        <% } %>
-      </div>
-    </div>
+    <% if (!lowStockProducts.length) { %>
+      <p class="muted">Kho hàng vẫn an toàn.</p>
+    <% } else { %>
+      <ul class="simple-list">
+        <% lowStockProducts.forEach((product) => { %>
+          <li>
+            <strong><%= product.name %></strong>
+            <span class="muted">Còn <%= product.inStock %> sản phẩm</span>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
   </article>
+
 </section>
+<% } %>
 
 <%- include('../partials/footer') %>
+ 
 
 
 

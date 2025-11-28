@@ -52,6 +52,14 @@
       <small>Email không thể thay đổi.</small>
     </label>
     <label>
+      Số điện thoại
+      <input type="tel" name="phone" value="<%= user.phone || '' %>" placeholder="Nhập số điện thoại" />
+      <small>Số điện thoại sẽ được lưu vào tài khoản.</small>
+    </label>
+    <div style="margin-top:12px">
+      <button class="btn btn-primary" type="submit">Lưu thông tin</button>
+    </div>
+    <label>
       Số điểm thưởng
       <input type="number" value="<%= user.loyaltyPoints || 0 %>" disabled />
       <small>Điểm được cộng khi đơn hàng hoàn tất.</small>
