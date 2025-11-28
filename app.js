@@ -119,6 +119,9 @@ app.use('/admin/comments', requireLogin, requireAdmin, adminCommentRoutes);
 app.use('/admin/coupons', requireLogin, requireAdmin, adminCouponRoutes);
 app.use('/admin/api/dashboard', requireLogin, requireAdmin, adminDashboardApiRoutes);
 
+// chatbot API (AI product suggestions)
+app.use('/api/chatbot', require('./routes/chatbotRoutes'));
+
 // landing page
 app.get('/', async (_req, res) => {
   try {

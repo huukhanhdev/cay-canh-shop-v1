@@ -1,0 +1,24 @@
+<div id="chatbot-widget">
+  <div class="chatbot-toggle" aria-hidden="false">
+    <button id="chatbot-toggle" class="chatbot-button" aria-label="Mở trợ lý gợi ý sản phẩm">
+      <span class="chatbot-icon">💬</span>
+      <span class="chatbot-badge" aria-hidden="true"></span>
+    </button>
+  </div>
+
+  <div id="chatbot-panel" aria-hidden="true" role="dialog" aria-label="Trợ lý gợi ý sản phẩm">
+    <div class="chatbot-header">
+      <strong>Gợi ý sản phẩm</strong>
+      <div class="chatbot-header-actions">
+        <button id="chatbot-close" aria-label="Đóng">✕</button>
+      </div>
+    </div>
+    <div class="chatbot-body">
+      <textarea id="chatbot-input" placeholder="Mô tả nhu cầu của bạn: ví dụ 'cần cây chịu nắng, giá <200k, cho ban công'" rows="3"></textarea>
+      <div class="chatbot-actions">
+        <button id="chatbot-send" class="btn btn-primary">Gợi ý</button>
+      </div>
+      <div id="chatbot-result" class="chatbot-result"></div>
+    </div>
+  </div>
+</div>
