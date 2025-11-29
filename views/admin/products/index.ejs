@@ -94,7 +94,6 @@
           </td>
           <td><%= product.categoryID ? product.categoryID.name : '—' %></td>
           <td><%= product.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
-          <td><%= product.inStock %></td>
           <td><%= (categoryLabels[product.type] || product.type) %></td>
           <td><%= product.updatedAt ? new Date(product.updatedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '' %></td>
           <td class="actions">

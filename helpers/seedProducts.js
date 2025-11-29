@@ -33,49 +33,20 @@ function buildTags(category, productName = "") {
 }
 
 function createVariants(product, category) {
-  if (Array.isArray(product.variants) && product.variants.length >= 2) {
+  if (Array.isArray(product.variants) && product.variants.length > 0) {
     return product.variants.map((variant, index) => ({
       variantName: variant.variantName || `Phiên bản ${index + 1}`,
       sku: variant.sku || `${product.slug}-VAR${index + 1}`,
       color: variant.color || (category?.productType === "pot" ? "Ghi" : "Xanh"),
       size: variant.size || "M",
       material: variant.material || (category?.productType === "pot" ? "Gốm" : "Thiên nhiên"),
-      price: variant.price || product.price,
-      stock: typeof variant.stock === "number" ? variant.stock : 20,
+      price: typeof variant.price === "number" ? variant.price : (product.price || 0),
+      stock: typeof variant.stock === "number" ? variant.stock : 0,
       variantImg: variant.variantImg || (product.img && product.img[index]) || product.img?.[0],
     }));
   }
-
-  const images = Array.isArray(product.img) && product.img.length
-    ? product.img
-    : ["/images/default-plant.jpg"];
-  const basePrice = Math.max(product.price || 120000, 60000);
-  const stockBase = product.inStock && product.inStock > 0 ? product.inStock : 24;
-  const firstStock = Math.max(8, Math.floor(stockBase / 2));
-  const secondStock = Math.max(8, stockBase - firstStock);
-
-  return [
-    {
-      variantName: "Phiên bản tiêu chuẩn",
-      sku: `${product.slug}-STD`,
-      price: Math.max(50000, Math.round(basePrice * 0.9)),
-      stock: firstStock,
-      color: category?.productType === "pot" ? "Trắng" : "Xanh lá",
-      size: "Nhỏ",
-      material: category?.productType === "pot" ? "Gốm sứ" : "Thiên nhiên",
-      variantImg: images[0],
-    },
-    {
-      variantName: "Phiên bản cao cấp",
-      sku: `${product.slug}-PRE`,
-      price: basePrice,
-      stock: secondStock,
-      color: category?.productType === "pot" ? "Ghi" : "Xanh đậm",
-      size: "Lớn",
-      material: category?.productType === "pot" ? "Xi măng" : "Thiên nhiên",
-      variantImg: images[1] || images[0],
-    },
-  ];
+  // No variants specified for this product
+  return [];
 }
 
 async function seedProducts() {
@@ -112,7 +83,11 @@ async function seedProducts() {
       description:
         "Cây dưa hấu có kích thước nhỏ gọn, là hình bầu dục, tán lá sọc xanh sẫm và thân màu đỏ. Chính là kiểu lá sọc xanh tựa như cây dưa hấu nên chúng được đặt tên là cây dưa hấu 'Watermelon'. Tuy những chiếc lá khá mỏng manh, nhưng nó lại có sức sống rất khỏe, dễ chăm sóc.",
       categoryID: findCat("cay-canh-mini"),
-      inStock: 20,
+      inStock: 0,
+      variants: [
+        { variantName: "Chậu nhỏ", price: 160000, stock: 10, size: "S" },
+        { variantName: "Chậu lớn", price: 210000, stock: 8, size: "L" }
+      ],
     },
     {
       name: "Cây hồng môn nhỏ để bàn chậu sứ",
@@ -127,7 +102,11 @@ async function seedProducts() {
       description:
         "Cây hồng môn được biết tới là một loại cây cảnh mang lại điều tốt lành, có thể giúp điều hòa khí phong thủy trong nhà, có khả năng thu hút những dòng khí tích cực và làm tiêu bớt dòng khí tiêu cực cho môi trường xung quanh, trồng cây hồng môn trong nhà sẽ giúp không gian sống trở nên hài hòa và bình yên hơn.",
       categoryID: findCat("cay-canh-mini"),
-      inStock: 15,
+      inStock: 0,
+      variants: [
+        { variantName: "Nhỏ", price: 240000, stock: 12, size: "S" },
+        { variantName: "Lớn", price: 260000, stock: 6, size: "L" }
+      ],
     },
     {
       name: "Cây may mắn hình trái tim chậu sứ",
@@ -142,7 +121,11 @@ async function seedProducts() {
       description:
         "Cây cỏ may mắn là một loại cây đặc biệt, được ươm từ những hạt thanh long và tạo hình bởi bàn tay khéo léo của người nghệ nhân. Trên những quả cầu màu xanh xanh là hàng vạn cây non được ươm trổ trông rất bắt mắt và độc đáo. Chúng được xem là biểu tượng cho tình yêu, hy vọng và sự may mắn nên thường được lựa chọn để làm quà tặng vào dịp đặc biệt.",
       categoryID: findCat("cay-canh-mini"),
-      inStock: 25,
+      inStock: 0,
+      variants: [
+        { variantName: "Trái tim nhỏ", price: 220000, stock: 15, size: "S" },
+        { variantName: "Trái tim lớn", price: 280000, stock: 8, size: "L" }
+      ],
     },
     {
       name: "Cây tùng bách tán tiểu cảnh để bàn chậu sứ",
@@ -174,7 +157,11 @@ async function seedProducts() {
       description:
         "Cây Kim Ngân là loại cây cảnh trong nhà được trồng phổ biến trên khắp thế giới, nó có sức ảnh hưởng tới mức mà hầu như ai cũng tin rằng khi trồng có thể mang lại nhiều may mắn trong cuộc sống, công việc hoặc làm ăn.",
       categoryID: findCat("cay-canh-van-phong"),
-      inStock: 30,
+      inStock: 0,
+      variants: [
+        { variantName: "3 thân", price: 280000, stock: 12 },
+        { variantName: "5 thân", price: 360000, stock: 7 }
+      ],
     },
     {
       name: "Cây lưỡi hổ Bantel Sensation chậu ươm",
@@ -975,8 +962,8 @@ async function seedProducts() {
         brand,
         tags: buildTags(category, product.name),
         variants,
-        price: variants[variants.length - 1].price,
-        inStock: variants.reduce((sum, v) => sum + (v.stock || 0), 0),
+        price: variants.length > 0 ? (variants[variants.length - 1].price || product.price) : product.price,
+        inStock: variants.length > 0 ? variants.reduce((sum, v) => sum + (v.stock || 0), 0) : (product.inStock || 0),
       };
     })
     .filter(Boolean);

@@ -180,6 +180,13 @@ exports.addItem = async (req, res) => {
 
     const qty = Math.max(1, Number(quantity) || 1);
     const { variant, price, variantId: resolvedVariantId } = buildVariantPayload(product, variantId);
+    
+    // Check stock availability
+    const availableStock = variant ? (variant.stock || 0) : (product.inStock || 0);
+    if (availableStock <= 0) {
+      return res.redirect(`/shop/${product.slug}?msg=out_of_stock`);
+    }
+    
     const productImg = Array.isArray(product.img) ? product.img[0] : product.img;
     const variantPayload = variant
       ? {
@@ -200,10 +207,17 @@ exports.addItem = async (req, res) => {
       );
 
       if (existing) {
-        existing.quantity += qty;
+        const newQty = existing.quantity + qty;
+        if (newQty > availableStock) {
+          return res.redirect(`/shop/${product.slug}?msg=exceed_stock&max=${availableStock}`);
+        }
+        existing.quantity = newQty;
         existing.price = price;
         existing.subTotal = existing.quantity * price;
       } else {
+        if (qty > availableStock) {
+          return res.redirect(`/shop/${product.slug}?msg=exceed_stock&max=${availableStock}`);
+        }
         cart.items.push({
           productID: product._id,
           productName: product.name,
@@ -225,7 +239,11 @@ exports.addItem = async (req, res) => {
         (item) => item.productID === productId && (item.variantId || '') === (resolvedVariantId || '')
       );
       if (existing) {
-        existing.quantity += qty;
+        const newQty = existing.quantity + qty;
+        if (newQty > availableStock) {
+          return res.redirect(`/shop/${product.slug}?msg=exceed_stock&max=${availableStock}`);
+        }
+        existing.quantity = newQty;
         existing.price = price;
         existing.subTotal = existing.quantity * price;
       } else {
@@ -257,6 +275,24 @@ exports.updateItem = async (req, res) => {
   try {
     const qty = Math.max(0, Number(quantity) || 0);
     const normalizedVariantId = variantId || '';
+
+    // Fetch product to check stock if quantity > 0
+    let availableStock = Infinity;
+    if (qty > 0) {
+      const product = await Product.findById(productId).lean();
+      if (!product) return res.redirect('/cart?msg=error');
+      
+      if (normalizedVariantId) {
+        const variant = product.variants?.find((v) => v._id?.toString() === normalizedVariantId);
+        availableStock = variant ? (variant.stock || 0) : 0;
+      } else {
+        availableStock = product.inStock || 0;
+      }
+      
+      if (qty > availableStock) {
+        return res.redirect('/cart?msg=exceed_stock');
+      }
+    }
 
     if (req.session?.user) {
       const cart = await getOrCreateCart(req.session.user.id);
@@ -336,8 +372,11 @@ exports.apiAddItem = async (req, res) => {
         existing.price = price;
         existing.subTotal = existing.quantity * price;
       } else {
+        if (qty > availableStock) {
+          return res.redirect(`/shop/${product.slug}?msg=exceed_stock&max=${availableStock}`);
+        }
         cart.items.push({
-          productID: product._id,
+          productID,
           productName: product.name,
           productImg,
           type: product.type,

@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Build carousel container
       const carousel = document.createElement('div'); carousel.className = 'card-carousel';
       const track = document.createElement('div'); track.className = 'carousel-track';
-      const images = [s.image || s.thumbnail || placeholderSvg]; // extend if product has multiple images
+      const images = [s.img || s.image || s.thumbnail || placeholderSvg]; // use first image from product
       images.forEach(src => {
         const img = document.createElement('img'); img.src = src; img.alt = s.name || 'product';
         img.onerror = function(){ this.onerror=null; this.src = placeholderSvg; };

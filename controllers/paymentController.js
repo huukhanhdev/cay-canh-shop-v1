@@ -2,7 +2,74 @@
 const Order = require('../models/Order');
 const User = require('../models/User');
 const Cart = require('../models/Cart');
+const Product = require('../models/Product');
 const momoService = require('../services/momoService');
+const { computeSummary } = require('../utils/pricing');
+const { logInventoryChange } = require('./admin/adminInventoryController');
+
+/**
+ * Decrement stock for order items (variants or product inStock)
+ * @param {Order} order - The order document with items array
+ */
+async function decrementStock(order) {
+  try {
+    for (const item of order.items) {
+      const product = await Product.findById(item.productID);
+      if (!product) continue;
+
+      let previousStock, newStock;
+
+      // If order item has variantId, decrement that variant's stock
+      if (item.variantId && product.variants?.length) {
+        const variant = product.variants.id(item.variantId);
+        if (variant && variant.stock >= item.quantity) {
+          previousStock = variant.stock;
+          variant.stock -= item.quantity;
+          newStock = variant.stock;
+          
+          // Log inventory change for variant
+          await logInventoryChange({
+            productID: product._id,
+            variantId: item.variantId,
+            type: 'sale',
+            quantity: item.quantity,
+            previousStock,
+            newStock,
+            reason: 'Bán hàng',
+            note: `Đơn hàng: ${order.orderNumber}`,
+            orderID: order._id
+          });
+        }
+      } else {
+        // Otherwise decrement product inStock
+        if (product.inStock >= item.quantity) {
+          previousStock = product.inStock;
+          product.inStock -= item.quantity;
+          newStock = product.inStock;
+          
+          // Log inventory change for product
+          await logInventoryChange({
+            productID: product._id,
+            variantId: null,
+            type: 'sale',
+            quantity: item.quantity,
+            previousStock,
+            newStock,
+            reason: 'Bán hàng',
+            note: `Đơn hàng: ${order.orderNumber}`,
+            orderID: order._id
+          });
+        }
+      }
+
+      // Increment soldCount
+      product.soldCount = (product.soldCount || 0) + item.quantity;
+      await product.save();
+    }
+  } catch (err) {
+    console.error('Error decrementing stock:', err);
+  }
+}
 
 // Create Momo payment: expects cart in session (similar to checkout flow)
 exports.createMomoPayment = async (req, res) => {
@@ -19,15 +86,38 @@ exports.createMomoPayment = async (req, res) => {
       return res.status(400).json({ error: 'Giỏ hàng trống' });
     }
 
-    // Validate cart total
     const subtotal = cart.totalPrice || 0;
     if (subtotal <= 0) {
       return res.status(400).json({ error: 'Số tiền không hợp lệ' });
     }
 
-    const amount = subtotal;
+    // Get user for loyalty points
+    const userDoc = await User.findById(req.session.user.id);
+    if (!userDoc) {
+      return res.status(404).json({ error: 'Không tìm thấy người dùng' });
+    }
 
-    // Create order draft first
+    // Apply coupon discount from session
+    const appliedDiscount = req.session?.checkoutCoupon?.discount || 0;
+
+    // Apply loyalty points from request body (same logic as postCheckout)
+    const requestedPoints = Math.max(0, Math.floor(Number(req.body.pointsToUse || 0) || 0));
+    const availablePoints = Math.max(0, Math.floor(Number(userDoc.loyaltyPoints || 0)));
+    const amountAfterDiscount = Math.max(0, subtotal - appliedDiscount);
+    const maxPointsRedeemable = Math.floor(amountAfterDiscount / 1000);
+    const pointsToApply = Math.min(requestedPoints, availablePoints, maxPointsRedeemable);
+    const pointUsedAmount = pointsToApply * 1000; // 1 điểm = 1.000 VND
+
+    // Compute final total (including tax, shipping, all discounts)
+    const { shipping, tax, total } = computeSummary(subtotal, appliedDiscount + pointUsedAmount);
+
+    if (total <= 0) {
+      return res.status(400).json({ error: 'Số tiền thanh toán không hợp lệ' });
+    }
+
+    const pointEarned = Math.floor(((total || 0) * 0.10) / 1000); // 10% cashback as points
+
+    // Create order draft with full pricing details
     const order = new Order({
       userID: req.session.user.id,
       address: { number: '', street: 'N/A', district: 'N/A', city: 'N/A' },
@@ -40,11 +130,17 @@ exports.createMomoPayment = async (req, res) => {
         variantId: it.variantId || null,
         variant: it.variant || {},
       })),
-      totalPrice: amount,
+      shippingFee: shipping,
+      couponID: req.session?.checkoutCoupon?.couponId || null,
+      discount: appliedDiscount,
+      pointUsed: pointUsedAmount,
+      totalPrice: total,
+      pointEarned,
       paymentMethod: 'momo',
       paymentStatus: 'pending',
       status: 'pending',
       statusHistory: [ { status: 'pending', updatedAt: new Date(), note: 'Tạo đơn chờ thanh toán Momo' } ],
+      pointRewarded: false, // Will be set to true after successful payment
     });
     await order.save();
 
@@ -53,7 +149,7 @@ exports.createMomoPayment = async (req, res) => {
 
     const momoResp = await momoService.createPayment({
       orderId,
-      amount,
+      amount: total, // Use final total including tax, shipping, discounts
       orderInfo: `Thanh toan don hang ${orderId}`,
       extraData,
     });
@@ -107,22 +203,76 @@ exports.returnHandler = async (req, res) => {
     // Process payment result
     if (String(resultCode) === '0') {
       order.paymentStatus = 'paid';
+      order.status = 'preparing'; // Update order status to preparing after payment
       if (transId) order.momoTransId = String(transId);
       order.statusHistory.push({ 
-        status: order.status, 
+        status: 'preparing', 
         updatedAt: new Date(), 
-        note: 'Thanh toán Momo thành công' 
+        note: 'Thanh toán Momo thành công - Đơn hàng đang được chuẩn bị' 
       });
+      order.pointRewarded = true;
       await order.save();
+      
+      // Decrement stock after successful payment
+      await decrementStock(order);
+      
+      // Update loyalty points (deduct used, add earned)
+      try {
+        const user = await User.findById(order.userID);
+        if (user) {
+          const pointsUsed = Math.floor((order.pointUsed || 0) / 1000);
+          if (pointsUsed > 0) {
+            user.loyaltyPoints = Math.max(0, (user.loyaltyPoints || 0) - pointsUsed);
+          }
+          if (order.pointEarned > 0) {
+            user.loyaltyPoints = Math.max(0, (user.loyaltyPoints || 0)) + order.pointEarned;
+          }
+          await user.save();
+        }
+      } catch (pointErr) {
+        console.error('Update loyalty points error:', pointErr);
+      }
+      
+      // Clear cart after successful payment
+      try {
+        const cart = await Cart.findOne({ userID: order.userID, isActive: true });
+        if (cart) {
+          cart.items = [];
+          cart.totalPrice = 0;
+          await cart.save();
+        }
+      } catch (cartErr) {
+        console.error('Clear cart error:', cartErr);
+      }
+      
+      // Increment coupon usage
+      if (order.couponID) {
+        try {
+          const Coupon = require('../models/Coupon');
+          await Coupon.findByIdAndUpdate(order.couponID, { $inc: { usedCount: 1 } });
+        } catch (couponErr) {
+          console.error('Update coupon usage error:', couponErr);
+        }
+      }
+      
+      // Clear checkout session
+      if (req.session) {
+        delete req.session.checkoutCoupon;
+        delete req.session.checkoutDraft;
+      }
+      
       return res.redirect(`/orders/${order._id}?msg=paid`);
 
-      // Payment failed
+      // Payment failed or cancelled by user
     }
     order.paymentStatus = 'failed';
+    order.status = 'canceled';
+    order.cancelReason = `Người dùng hủy thanh toán Momo (resultCode: ${resultCode})`;
+    order.canceledAt = new Date();
     order.statusHistory.push({ 
-      status: order.status, 
+      status: 'canceled', 
       updatedAt: new Date(), 
-      note: `Thanh toán thất bại: ${message || resultCode}` 
+      note: `Người dùng hủy thanh toán Momo: ${message || resultCode}` 
     });
     await order.save();
     return res.redirect(`/orders/${order._id}?msg=pay_failed`);
@@ -164,18 +314,66 @@ exports.ipnHandler = async (req, res) => {
     // Process IPN result
     if (String(resultCode) === '0') {
       order.paymentStatus = 'paid';
+      order.status = 'preparing'; // Update order status to preparing after payment
       order.momoTransId = transId ? String(transId) : undefined;
       order.statusHistory.push({ 
-        status: order.status, 
+        status: 'preparing', 
         updatedAt: new Date(), 
-        note: 'IPN xác nhận thanh toán thành công' 
+        note: 'IPN xác nhận thanh toán thành công - Đơn hàng đang được chuẩn bị' 
       });
+      order.pointRewarded = true;
+      
+      // Decrement stock after successful IPN
+      await decrementStock(order);
+      
+      // Update loyalty points (deduct used, add earned)
+      try {
+        const user = await User.findById(order.userID);
+        if (user) {
+          const pointsUsed = Math.floor((order.pointUsed || 0) / 1000);
+          if (pointsUsed > 0) {
+            user.loyaltyPoints = Math.max(0, (user.loyaltyPoints || 0) - pointsUsed);
+          }
+          if (order.pointEarned > 0) {
+            user.loyaltyPoints = Math.max(0, (user.loyaltyPoints || 0)) + order.pointEarned;
+          }
+          await user.save();
+        }
+      } catch (pointErr) {
+        console.error('IPN update loyalty points error:', pointErr);
+      }
+      
+      // Clear cart after successful payment
+      try {
+        const cart = await Cart.findOne({ userID: order.userID, isActive: true });
+        if (cart) {
+          cart.items = [];
+          cart.totalPrice = 0;
+          await cart.save();
+        }
+      } catch (cartErr) {
+        console.error('IPN clear cart error:', cartErr);
+      }
+      
+      // Increment coupon usage
+      if (order.couponID) {
+        try {
+          const Coupon = require('../models/Coupon');
+          await Coupon.findByIdAndUpdate(order.couponID, { $inc: { usedCount: 1 } });
+        } catch (couponErr) {
+          console.error('IPN update coupon usage error:', couponErr);
+        }
+      }
     } else {
+      // Payment failed or cancelled by user
       order.paymentStatus = 'failed';
+      order.status = 'canceled';
+      order.cancelReason = `Người dùng hủy thanh toán Momo (resultCode: ${resultCode})`;
+      order.canceledAt = new Date();
       order.statusHistory.push({ 
-        status: order.status, 
+        status: 'canceled', 
         updatedAt: new Date(), 
-        note: `IPN thất bại: ${message || resultCode}` 
+        note: `IPN: Người dùng hủy thanh toán Momo (${message || resultCode})` 
       });
 
     }

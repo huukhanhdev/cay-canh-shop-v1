@@ -1,0 +1,283 @@
+<%- include('../../partials/header', { title }) %>
+
+<div class="admin-container">
+  <div class="admin-header">
+    <h2><%= title %></h2>
+    <div class="admin-actions">
+      <a href="/admin/inventory" class="btn btn-secondary">← Quay lại danh sách kho</a>
+      <a href="/admin" class="btn btn-secondary">Dashboard</a>
+    </div>
+  </div>
+
+  <!-- Filter -->
+  <form method="GET" action="/admin/inventory/logs" class="filter-form">
+    <select name="type">
+      <option value="all" <%= typeFilter === 'all' ? 'selected' : '' %>>Tất cả loại giao dịch</option>
+      <option value="import" <%= typeFilter === 'import' ? 'selected' : '' %>>Nhập kho</option>
+      <option value="export" <%= typeFilter === 'export' ? 'selected' : '' %>>Xuất kho</option>
+      <option value="adjustment" <%= typeFilter === 'adjustment' ? 'selected' : '' %>>Điều chỉnh</option>
+      <option value="sale" <%= typeFilter === 'sale' ? 'selected' : '' %>>Bán hàng</option>
+    </select>
+    <button type="submit" class="btn btn-primary">Lọc</button>
+  </form>
+
+  <!-- Logs Table -->
+  <% if (logs.length === 0) { %>
+    <p style="color: var(--muted); margin-top: 2rem;">Không có lịch sử nào.</p>
+  <% } else { %>
+    <div class="table-container">
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>Thời gian</th>
+            <th>Sản phẩm</th>
+            <th>Loại</th>
+            <th>Số lượng</th>
+            <th>Tồn kho trước/sau</th>
+            <th>Lý do</th>
+            <th>Người thực hiện</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% logs.forEach(log => { 
+            const typeLabel = {
+              import: '➕ Nhập kho',
+              export: '➖ Xuất kho',
+              adjustment: '⚙️ Điều chỉnh',
+              sale: '🛒 Bán hàng'
+            };
+            const typeClass = {
+              import: 'log-import',
+              export: 'log-export',
+              adjustment: 'log-adjust',
+              sale: 'log-sale'
+            };
+          %>
+            <tr>
+              <td><%= new Date(log.createdAt).toLocaleString('vi-VN') %></td>
+              <td>
+                <% if (log.productID) { %>
+                  <a href="/admin/inventory/<%= log.productID._id %>" style="color: var(--primary);">
+                    <%= log.productID.name %>
+                  </a>
+                  <div class="meta"><%= log.productID.slug %></div>
+                  <% if (log.variantId) { %>
+                    <span class="badge badge-info">Có biến thể</span>
+                  <% } %>
+                <% } else { %>
+                  <span class="meta">Sản phẩm đã bị xóa</span>
+                <% } %>
+              </td>
+              <td>
+                <span class="log-type <%= typeClass[log.type] %>"><%= typeLabel[log.type] || log.type %></span>
+              </td>
+              <td><strong><%= log.quantity %></strong></td>
+              <td>
+                <span class="stock-change">
+                  <%= log.previousStock %> → <%= log.newStock %>
+                  <% 
+                    const change = log.newStock - log.previousStock;
+                    const changeClass = change > 0 ? 'increase' : (change < 0 ? 'decrease' : 'neutral');
+                  %>
+                  <span class="change <%= changeClass %>">
+                    <%= change > 0 ? '+' : '' %><%= change %>
+                  </span>
+                </span>
+              </td>
+              <td>
+                <%= log.reason || '-' %>
+                <% if (log.note) { %>
+                  <div class="meta"><%= log.note %></div>
+                <% } %>
+                <% if (log.orderID) { %>
+                  <div class="meta">
+                    <a href="/admin/orders/<%= log.orderID._id %>" style="color: var(--primary);">
+                      Đơn: <%= log.orderID.orderNumber || log.orderID._id %>
+                    </a>
+                  </div>
+                <% } %>
+              </td>
+              <td>
+                <% if (log.adminID) { %>
+                  <%= log.adminID.fullName || log.adminID.email %>
+                <% } else { %>
+                  <span class="meta">Hệ thống</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <% if (totalPages > 1) { %>
+      <div class="pagination">
+        <% if (page > 1) { %>
+          <a href="?page=<%= page - 1 %>&type=<%= typeFilter %>" class="btn btn-secondary">« Trước</a>
+        <% } %>
+        
+        <span style="margin: 0 1rem;">Trang <%= page %> / <%= totalPages %></span>
+        
+        <% if (page < totalPages) { %>
+          <a href="?page=<%= page + 1 %>&type=<%= typeFilter %>" class="btn btn-secondary">Sau »</a>
+        <% } %>
+      </div>
+    <% } %>
+  <% } %>
+</div>
+
+<style>
+.admin-container {
+  max-width: 1400px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.filter-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.filter-form select {
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  flex: 1;
+  max-width: 300px;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.log-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.log-table th,
+.log-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.log-table th {
+  background: var(--bg-secondary);
+  font-weight: 600;
+}
+
+.log-table tr:hover {
+  background: var(--bg-hover);
+}
+
+.log-type {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.log-import {
+  background: #d4edda;
+  color: #155724;
+}
+
+.log-export {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.log-adjust {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.log-sale {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.stock-change {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.change {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.change.increase {
+  color: #155724;
+}
+
+.change.decrease {
+  color: #721c24;
+}
+
+.change.neutral {
+  color: var(--muted);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.badge-info {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 2rem;
+  gap: 1rem;
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+  .log-table {
+    font-size: 0.85rem;
+  }
+  
+  .log-table th,
+  .log-table td {
+    padding: 0.5rem;
+  }
+}
+</style>
+
+<%- include('../../partials/footer') %>

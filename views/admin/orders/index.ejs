@@ -56,6 +56,7 @@
         <th>Khách hàng</th>
         <th>Ngày đặt</th>
         <th>Trạng thái</th>
+        <th>Địa chỉ giao</th>
         <th>Tổng tiền</th>
         <th></th>
       </tr>
@@ -72,6 +73,10 @@
           <td><%= order.userID ? order.userID.fullName || order.userID.email : 'N/A' %></td>
           <td><%= new Date(order.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></td>
           <td><span class="status status-<%= order.status %>"><%= order.status %></span></td>
+          <td>
+            <% const addr = order.address || {}; %>
+            <%= [addr.street, addr.district, addr.city].filter(Boolean).join(', ') || '—' %>
+          </td>
           <td><%= (order.totalPrice || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
           <td><a class="btn btn-secondary" href="/admin/orders/<%= order._id %>">Chi tiết</a></td>
         </tr>

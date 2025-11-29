@@ -157,7 +157,8 @@ router.post('/suggest', async (req, res) => {
         if (minPrice) reasons.push(`Giá ≥ ${minPrice.toLocaleString('vi-VN')}đ`);
         if (maxPrice) reasons.push(`Giá ≤ ${maxPrice.toLocaleString('vi-VN')}đ`);
         if (!reasons.length) reasons.push('Phù hợp với truy vấn tổng quát');
-        return { id: p._id, name: p.name, price: p.price, slug: p.slug, reason: reasons.join(' · ') };
+        const firstImg = (Array.isArray(p.img) && p.img.length > 0) ? p.img[0] : '/images/default-plant.jpg';
+        return { id: p._id, name: p.name, price: p.price, slug: p.slug, img: firstImg, reason: reasons.join(' · ') };
       });
     }
 
@@ -199,11 +200,13 @@ router.post('/suggest', async (req, res) => {
 
     const suggestions = (json.suggestions || []).map(s => {
       const prod = candidates.find(p => p._id.toString() === s.id.toString());
+      const firstImg = prod && Array.isArray(prod.img) && prod.img.length > 0 ? prod.img[0] : '/images/default-plant.jpg';
       return {
         id: s.id,
         name: prod ? prod.name : s.name,
         price: prod ? prod.price : s.price,
         slug: prod ? prod.slug : null,
+        img: firstImg,
         reason: s.reason,
       };
     });

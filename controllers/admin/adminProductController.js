@@ -148,7 +148,17 @@ function buildAdminFilters(query = {}) {
     brand: query.brand || '',
   };
 
-  if (state.q) filters.$text = { $search: state.q };
+  // Search by name, slug, or description (regex for flexible matching)
+  if (state.q) {
+    const searchRegex = new RegExp(state.q.trim(), 'i');
+    filters.$or = [
+      { name: searchRegex },
+      { slug: searchRegex },
+      { description: searchRegex },
+      { brand: searchRegex },
+    ];
+  }
+  
   if (state.type) filters.type = state.type;
   if (state.brand) filters.brand = state.brand;
 

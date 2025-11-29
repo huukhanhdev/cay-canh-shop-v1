@@ -35,12 +35,11 @@
     <% } %>
     <label>Họ tên người nhận<input name="fullName" value="<%= formData.fullName || '' %>" required></label>
     <label>Số điện thoại<input name="phone" value="<%= formData.phone || '' %>" required></label>
-    <label>Địa chỉ (đường)<input name="street" value="<%= formData.street || '' %>" required></label>
     <% if (isLoggedIn && savedAddressList.length) { %>
       <label>
         Chọn địa chỉ đã lưu
         <select id="savedAddressSelect">
-          <option value="">-- Chọn địa chỉ --</option>
+          <option value="">-- None (nhập tay) --</option>
           <% savedAddressList.forEach((addr, idx) => { %>
             <option value="<%= idx %>">
               <%= addr.fullName || 'Không tên' %> - <%= [addr.street, addr.district, addr.city].filter(Boolean).join(', ') %>
@@ -50,6 +49,7 @@
         </select>
       </label>
     <% } %>
+    <label>Địa chỉ (đường)<input name="street" value="<%= formData.street || '' %>" required></label>
     <div class="form-grid" data-location-form>
       <label>
         Tỉnh/Thành phố
@@ -80,10 +80,6 @@
       <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
         <input type="radio" name="paymentMethod" value="momo"> 
         <span>Thanh toán Momo <img src="https://developers.momo.vn/v3/img/logo.svg" alt="Momo" style="height:20px;vertical-align:middle;margin-left:4px"></span>
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-        <input type="radio" name="paymentMethod" value="vnpay"> 
-        <span>Thanh toán VNPay <img src="https://vnpay.vn/s1/statics.vnpay.vn/2023/6/0oxhzjmxbksr1686814746087.png" alt="VNPay" style="height:20px;vertical-align:middle;margin-left:4px"></span>
       </label>
       <% } %>
       <div class="form-actions">
@@ -117,7 +113,7 @@
     </ul>
     <div class="coupon-box">
       <label>Mã giảm giá</label>
-      <div style="display:flex; gap:8px; align-items:center">
+      <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap">
         <input id="couponInput" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase" />
         <button class="btn btn-secondary" id="applyCouponBtn" type="button">Áp dụng</button>
         <% if (appliedCoupon) { %>
@@ -134,7 +130,7 @@
     <div class="coupon-box">
       <label>Điểm thưởng</label>
       <p class="form-hint">Bạn đang có: <strong><%= pointsAvailable.toLocaleString('vi-VN') %></strong> điểm (1 điểm = 1.000 VND).</p>
-      <div style="display:flex; gap:8px; align-items:center">
+      <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap">
         <input id="pointsInput" name="pointsToUse" type="number" min="0" step="1" placeholder="Số điểm muốn dùng" />
         <button class="btn btn-secondary" id="applyPointsBtn" type="button">Dùng điểm</button>
         <button class="btn btn-danger" id="removePointsBtn" type="button" style="display:none">Bỏ điểm</button>
@@ -361,10 +357,28 @@
       const citySelect = document.querySelector('select[name="city"]');
       const districtSelect = document.querySelector('select[name="district"]');
       const noteInput = document.querySelector('textarea[name="note"]');
+      // Removed summary display box per request; only fill & lock fields now.
+
+      function setReadonlyMode(enabled){
+        const inputs = [fullNameInput, phoneInput, streetInput, citySelect, districtSelect];
+        inputs.forEach(inp => {
+          if (!inp) return;
+          if (enabled) {
+            inp.setAttribute('readonly', '');
+            if (inp.tagName.toLowerCase() === 'select') inp.setAttribute('disabled', '');
+          } else {
+            inp.removeAttribute('readonly');
+            if (inp.tagName.toLowerCase() === 'select') inp.removeAttribute('disabled');
+          }
+        });
+      }
 
       select.addEventListener('change', () => {
         const idx = Number(select.value);
-        if (Number.isNaN(idx) || idx < 0 || idx >= addresses.length) return;
+        if (select.value === '' || Number.isNaN(idx) || idx < 0 || idx >= addresses.length) {
+          setReadonlyMode(false);
+          return;
+        }
         const addr = addresses[idx];
         if (fullNameInput) fullNameInput.value = addr.fullName || '';
         if (phoneInput) phoneInput.value = addr.phone || '';
@@ -377,7 +391,13 @@
             if (districtSelect) districtSelect.value = addr.district || '';
           }, 0);
         }
+        // Enable readonly since using saved address
+        setReadonlyMode(true);
+        // Removed summary rendering
       });
+
+      // Initialize: ensure manual entry is editable until a saved address is selected
+      setReadonlyMode(false);
     })();
   </script>
 <% } %>

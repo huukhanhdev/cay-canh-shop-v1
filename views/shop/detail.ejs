@@ -1,5 +1,11 @@
 <%- include('../partials/header', { title }) %>
 
+<% if (typeof msg !== 'undefined' && msg === 'out_of_stock') { %>
+  <p class="alert alert-error">Sản phẩm này đã hết hàng.</p>
+<% } else if (typeof msg !== 'undefined' && msg === 'exceed_stock') { %>
+  <p class="alert alert-error">Số lượng vượt quá tồn kho. Tối đa: <%= typeof max !== 'undefined' ? max : '' %></p>
+<% } %>
+
 <% const galleryImages = Array.isArray(product.img) && product.img.length ? product.img.slice() : ['/images/default-plant.jpg']; %>
 
 <section class="product-detail">
@@ -23,29 +29,82 @@
       <div class="rating-score" id="avgRating"><%= avgRating || 0 %><span>/5</span></div>
       <div id="ratingCount"><%= ratingCount %> lượt đánh giá</div>
     </div>
-    <p class="price"><%= (product.price || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></p>
+    <p class="price" id="displayPrice"><%= (product.price || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></p>
+    
+    <% if (!product.variants || !product.variants.length) { %>
+      <div class="stock-info">
+        <% const stockCount = product.inStock || 0; %>
+        <% if (stockCount > 0) { %>
+          <p class="stock-available">✓ Còn hàng: <strong><%= stockCount %></strong> sản phẩm</p>
+        <% } else { %>
+          <p class="stock-out">✗ Hết hàng</p>
+        <% } %>
+      </div>
+    <% } %>
+    
     <p class="desc-text"><%- (product.description || 'Đang cập nhật mô tả.').replace(/\n/g, '<br>') %></p>
     <p class="meta">
       <% (product.tags || []).forEach((tag) => { %>
         <span class="tag-pill"><%= tag %></span>
       <% }) %>
     </p>
-    <form method="POST" action="/cart/add" class="detail-form">
+    
+    <form method="POST" action="/cart/add" class="detail-form" id="addToCartForm">
       <input type="hidden" name="productId" value="<%= product._id %>">
+      
       <% if (product.variants && product.variants.length) { %>
-        <label>
-          Biến thể
-          <select name="variantId">
-            <% product.variants.forEach((variant) => { %>
-              <option value="<%= variant._id %>">
-                <%= variant.variantName %> - <%= (variant.price || product.price || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %> (Kho: <%= variant.stock || 0 %>)
-              </option>
+        <div class="variant-selector">
+          <label>Chọn biến thể:</label>
+          <div class="variant-options">
+            <% product.variants.forEach((variant, idx) => { %>
+              <div class="variant-option" data-variant-id="<%= variant._id %>" 
+                   data-price="<%= variant.price || product.price || 0 %>"
+                   data-stock="<%= variant.stock || 0 %>"
+                   data-variant-name="<%= variant.variantName %>"
+                   data-variant-img="<%= variant.variantImg || '' %>">
+                <input type="radio" name="variantId" value="<%= variant._id %>" 
+                       id="variant_<%= idx %>" <%= idx === 0 ? 'checked' : '' %>>
+                <label for="variant_<%= idx %>" class="variant-label">
+                  <div class="variant-info">
+                    <span class="variant-name"><%= variant.variantName %></span>
+                    <% if (variant.size) { %>
+                      <span class="variant-detail">Size: <%= variant.size %></span>
+                    <% } %>
+                    <% if (variant.material) { %>
+                      <span class="variant-detail">Chất liệu: <%= variant.material %></span>
+                    <% } %>
+                  </div>
+                  <div class="variant-price-stock">
+                    <span class="variant-price"><%= (variant.price || product.price || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></span>
+                    <% const vStock = variant.stock || 0; %>
+                    <% if (vStock > 0) { %>
+                      <span class="variant-stock stock-available">Còn <%= vStock %></span>
+                    <% } else { %>
+                      <span class="variant-stock stock-out">Hết hàng</span>
+                    <% } %>
+                  </div>
+                </label>
+              </div>
             <% }) %>
-          </select>
-        </label>
+          </div>
+        </div>
+        
+        <div class="stock-info" id="variantStockInfo">
+          <% const firstVariant = product.variants[0]; %>
+          <% const firstStock = firstVariant.stock || 0; %>
+          <% if (firstStock > 0) { %>
+            <p class="stock-available">✓ Còn hàng: <strong><%= firstStock %></strong> sản phẩm</p>
+          <% } else { %>
+            <p class="stock-out">✗ Hết hàng</p>
+          <% } %>
+        </div>
       <% } %>
-      <label>Số lượng <input type="number" name="quantity" value="1" min="1"></label>
-      <button class="btn btn-primary" type="submit">Thêm vào giỏ hàng</button>
+      
+      <label>Số lượng 
+        <input type="number" name="quantity" id="quantityInput" value="1" min="1" 
+               max="<%= product.variants && product.variants.length ? (product.variants[0].stock || 0) : (product.inStock || 0) %>">
+      </label>
+      <button class="btn btn-primary" type="submit" id="addToCartBtn">Thêm vào giỏ hàng</button>
     </form>
   </div>
 </section>
@@ -186,6 +245,76 @@
       });
     } catch (e) {
       console.error('Socket error:', e);
+    }
+  })();
+  
+  // Variant selection handler
+  (function() {
+    const variantOptions = document.querySelectorAll('.variant-option');
+    const displayPrice = document.getElementById('displayPrice');
+    const stockInfo = document.getElementById('variantStockInfo');
+    const quantityInput = document.getElementById('quantityInput');
+    const addToCartBtn = document.getElementById('addToCartBtn');
+    const mainImage = document.getElementById('mainImage');
+    
+    if (!variantOptions.length) return; // No variants
+    
+    variantOptions.forEach(option => {
+      const radio = option.querySelector('input[type="radio"]');
+      radio.addEventListener('change', function() {
+        const price = parseInt(option.dataset.price);
+        const stock = parseInt(option.dataset.stock);
+        const variantName = option.dataset.variantName;
+        const variantImg = option.dataset.variantImg;
+        
+        // Update price
+        if (displayPrice) {
+          displayPrice.textContent = price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+        }
+        
+        // Update stock info
+        if (stockInfo) {
+          if (stock > 0) {
+            stockInfo.innerHTML = '<p class="stock-available">✓ Còn hàng: <strong>' + stock + '</strong> sản phẩm</p>';
+          } else {
+            stockInfo.innerHTML = '<p class="stock-out">✗ Hết hàng</p>';
+          }
+        }
+        
+        // Update quantity input max
+        if (quantityInput) {
+          quantityInput.max = stock;
+          if (parseInt(quantityInput.value) > stock) {
+            quantityInput.value = Math.max(1, stock);
+          }
+        }
+        
+        // Update button state
+        if (addToCartBtn) {
+          if (stock <= 0) {
+            addToCartBtn.disabled = true;
+            addToCartBtn.textContent = 'Hết hàng';
+          } else {
+            addToCartBtn.disabled = false;
+            addToCartBtn.textContent = 'Thêm vào giỏ hàng';
+          }
+        }
+        
+        // Update main image if variant has custom image
+        if (variantImg && mainImage) {
+          mainImage.src = variantImg;
+        }
+        
+        // Visual feedback
+        variantOptions.forEach(opt => opt.classList.remove('selected'));
+        option.classList.add('selected');
+      });
+    });
+    
+    // Set initial state based on first variant
+    const firstRadio = document.querySelector('.variant-option input[type="radio"]:checked');
+    if (firstRadio) {
+      firstRadio.dispatchEvent(new Event('change'));
     }
   })();
 </script>

@@ -79,12 +79,10 @@ Admin:
 - Horizontal Scaling: Phiên làm việc stateless (có thể chuyển sang Redis). Docker sẵn sàng mở rộng theo replica.
 
 8. CHỨC NĂNG NÂNG CAO / BONUS (LIỆT KÊ RÕ)
-(Thay thế nội dung bên dưới bằng chức năng thực tế)
 - Chatbot AI trợ lý sản phẩm (Gemini API)
 - Luồng bình luận realtime qua Socket.io
 - Script seed dữ liệu & chuẩn hóa tự động
 - Script sửa ảnh sản phẩm
-(Bằng chứng nằm trong thư mục BONUS/)
 
 9. DỌN DẸP TRƯỚC KHI NỘP
 Xóa hoặc loại trừ:

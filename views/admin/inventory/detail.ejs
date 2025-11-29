@@ -1,0 +1,444 @@
+<%- include('../../partials/header', { title }) %>
+
+<div class="admin-container">
+  <div class="admin-header">
+    <h2><%= title %></h2>
+    <div class="admin-actions">
+      <a href="/admin/inventory" class="btn btn-secondary">← Quay lại danh sách kho</a>
+      <a href="/admin/products/<%= product._id %>/edit" class="btn btn-secondary">Sửa sản phẩm</a>
+    </div>
+  </div>
+
+  <% if (msg) { %>
+    <% if (msg === 'imported') { %>
+      <p class="alert alert-success">Nhập kho thành công!</p>
+    <% } else if (msg === 'exported') { %>
+      <p class="alert alert-success">Xuất kho thành công!</p>
+    <% } else if (msg === 'adjusted') { %>
+      <p class="alert alert-success">Điều chỉnh tồn kho thành công!</p>
+    <% } else if (msg === 'invalid_quantity') { %>
+      <p class="alert alert-error">Số lượng không hợp lệ.</p>
+    <% } else if (msg === 'variant_not_found') { %>
+      <p class="alert alert-error">Không tìm thấy biến thể.</p>
+    <% } else if (msg === 'error') { %>
+      <p class="alert alert-error">Đã xảy ra lỗi. Vui lòng thử lại.</p>
+    <% } %>
+  <% } %>
+
+  <div class="inventory-detail-grid">
+    <!-- Product Info -->
+    <div class="inventory-card">
+      <h3>Thông tin sản phẩm</h3>
+      <% 
+        const productImg = Array.isArray(product.img) && product.img.length > 0 ? product.img[0] : '/uploads/products/default.jpg';
+      %>
+      <img src="<%= productImg %>" alt="<%= product.name %>" class="product-detail-img">
+      <p><strong>Tên:</strong> <%= product.name %></p>
+      <p><strong>SKU:</strong> <%= product.sku || '-' %></p>
+      <p><strong>Loại:</strong> <%= product.type === 'plant' ? 'Cây' : 'Chậu' %></p>
+      <p><strong>Giá:</strong> <%= product.price.toLocaleString('vi-VN') %>đ</p>
+    </div>
+
+    <!-- Stock Management -->
+    <div class="inventory-card">
+      <h3>Quản lý tồn kho</h3>
+      
+      <% 
+        const hasVariants = product.variants && product.variants.length > 0;
+      %>
+      
+      <% if (!hasVariants) { %>
+        <!-- Simple product stock -->
+        <div class="stock-section">
+          <div class="stock-display">
+            <span class="stock-label">Tồn kho hiện tại:</span>
+            <span class="stock-value <%= product.inStock === 0 ? 'out-stock' : (product.inStock <= 10 ? 'low-stock' : 'in-stock') %>">
+              <%= product.inStock || 0 %>
+            </span>
+          </div>
+
+          <!-- Import form -->
+          <details class="action-details">
+            <summary>➕ Nhập kho</summary>
+            <form method="POST" action="/admin/inventory/<%= product._id %>/import" class="stock-form">
+              <label>Số lượng nhập:</label>
+              <input type="number" name="quantity" min="1" required>
+              
+              <label>Lý do:</label>
+              <input type="text" name="reason" placeholder="VD: Nhập hàng từ nhà cung cấp">
+              
+              <label>Ghi chú:</label>
+              <textarea name="note" rows="2" placeholder="Thông tin thêm (không bắt buộc)"></textarea>
+              
+              <button type="submit" class="btn btn-primary">Xác nhận nhập kho</button>
+            </form>
+          </details>
+
+          <!-- Export form -->
+          <details class="action-details">
+            <summary>➖ Xuất kho</summary>
+            <form method="POST" action="/admin/inventory/<%= product._id %>/export" class="stock-form">
+              <label>Số lượng xuất:</label>
+              <input type="number" name="quantity" min="1" max="<%= product.inStock || 0 %>" required>
+              
+              <label>Lý do:</label>
+              <input type="text" name="reason" placeholder="VD: Hư hỏng, mất mát, khuyến mãi">
+              
+              <label>Ghi chú:</label>
+              <textarea name="note" rows="2" placeholder="Thông tin thêm (không bắt buộc)"></textarea>
+              
+              <button type="submit" class="btn btn-danger">Xác nhận xuất kho</button>
+            </form>
+          </details>
+
+          <!-- Adjust form -->
+          <details class="action-details">
+            <summary>⚙️ Điều chỉnh tồn kho</summary>
+            <form method="POST" action="/admin/inventory/<%= product._id %>/adjust" class="stock-form">
+              <label>Số lượng mới:</label>
+              <input type="number" name="newQuantity" min="0" value="<%= product.inStock || 0 %>" required>
+              
+              <label>Lý do:</label>
+              <input type="text" name="reason" placeholder="VD: Kiểm kê, sửa lỗi nhập liệu">
+              
+              <label>Ghi chú:</label>
+              <textarea name="note" rows="2" placeholder="Thông tin thêm (không bắt buộc)"></textarea>
+              
+              <button type="submit" class="btn btn-warning">Xác nhận điều chỉnh</button>
+            </form>
+          </details>
+        </div>
+      <% } else { %>
+        <!-- Variants stock -->
+        <div class="variants-section">
+          <p class="meta">Sản phẩm có <%= product.variants.length %> biến thể:</p>
+          
+          <% product.variants.forEach((variant, idx) => { %>
+            <div class="variant-item">
+              <div class="variant-header">
+                <strong><%= variant.variantName || `Biến thể ${idx + 1}` %></strong>
+                <% if (variant.size) { %><span class="meta">Size: <%= variant.size %></span><% } %>
+                <% if (variant.color) { %><span class="meta">Màu: <%= variant.color %></span><% } %>
+              </div>
+              
+              <div class="stock-display">
+                <span class="stock-label">Tồn kho:</span>
+                <span class="stock-value <%= variant.stock === 0 ? 'out-stock' : (variant.stock <= 10 ? 'low-stock' : 'in-stock') %>">
+                  <%= variant.stock || 0 %>
+                </span>
+              </div>
+
+              <!-- Import variant -->
+              <details class="action-details">
+                <summary>➕ Nhập kho</summary>
+                <form method="POST" action="/admin/inventory/<%= product._id %>/import" class="stock-form">
+                  <input type="hidden" name="variantId" value="<%= variant._id %>">
+                  <label>Số lượng nhập:</label>
+                  <input type="number" name="quantity" min="1" required>
+                  <label>Lý do:</label>
+                  <input type="text" name="reason" placeholder="Lý do nhập kho">
+                  <label>Ghi chú:</label>
+                  <textarea name="note" rows="2"></textarea>
+                  <button type="submit" class="btn btn-primary">Nhập kho</button>
+                </form>
+              </details>
+
+              <!-- Export variant -->
+              <details class="action-details">
+                <summary>➖ Xuất kho</summary>
+                <form method="POST" action="/admin/inventory/<%= product._id %>/export" class="stock-form">
+                  <input type="hidden" name="variantId" value="<%= variant._id %>">
+                  <label>Số lượng xuất:</label>
+                  <input type="number" name="quantity" min="1" max="<%= variant.stock || 0 %>" required>
+                  <label>Lý do:</label>
+                  <input type="text" name="reason" placeholder="Lý do xuất kho">
+                  <label>Ghi chú:</label>
+                  <textarea name="note" rows="2"></textarea>
+                  <button type="submit" class="btn btn-danger">Xuất kho</button>
+                </form>
+              </details>
+
+              <!-- Adjust variant -->
+              <details class="action-details">
+                <summary>⚙️ Điều chỉnh</summary>
+                <form method="POST" action="/admin/inventory/<%= product._id %>/adjust" class="stock-form">
+                  <input type="hidden" name="variantId" value="<%= variant._id %>">
+                  <label>Số lượng mới:</label>
+                  <input type="number" name="newQuantity" min="0" value="<%= variant.stock || 0 %>" required>
+                  <label>Lý do:</label>
+                  <input type="text" name="reason" placeholder="Lý do điều chỉnh">
+                  <label>Ghi chú:</label>
+                  <textarea name="note" rows="2"></textarea>
+                  <button type="submit" class="btn btn-warning">Điều chỉnh</button>
+                </form>
+              </details>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Inventory History -->
+  <div class="inventory-card" style="margin-top: 2rem;">
+    <h3>Lịch sử xuất nhập kho (50 giao dịch gần nhất)</h3>
+    
+    <% if (logs.length === 0) { %>
+      <p class="meta">Chưa có lịch sử xuất nhập kho.</p>
+    <% } else { %>
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>Thời gian</th>
+            <th>Loại</th>
+            <th>Biến thể</th>
+            <th>Số lượng</th>
+            <th>Tồn kho</th>
+            <th>Lý do</th>
+            <th>Người thực hiện</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% logs.forEach(log => { 
+            const typeLabel = {
+              import: '➕ Nhập kho',
+              export: '➖ Xuất kho',
+              adjustment: '⚙️ Điều chỉnh',
+              sale: '🛒 Bán hàng'
+            };
+            const typeClass = {
+              import: 'log-import',
+              export: 'log-export',
+              adjustment: 'log-adjust',
+              sale: 'log-sale'
+            };
+          %>
+            <tr>
+              <td><%= new Date(log.createdAt).toLocaleString('vi-VN') %></td>
+              <td><span class="log-type <%= typeClass[log.type] %>"><%= typeLabel[log.type] || log.type %></span></td>
+              <td><%= log.variantId ? 'Có' : '-' %></td>
+              <td><%= log.quantity %></td>
+              <td>
+                <span class="meta"><%= log.previousStock %></span> → 
+                <strong><%= log.newStock %></strong>
+              </td>
+              <td>
+                <%= log.reason || '-' %>
+                <% if (log.note) { %>
+                  <div class="meta"><%= log.note %></div>
+                <% } %>
+                <% if (log.orderID) { %>
+                  <div class="meta">Đơn: <%= log.orderID.orderNumber || log.orderID %></div>
+                <% } %>
+              </td>
+              <td>
+                <% if (log.adminID) { %>
+                  <%= log.adminID.fullName || log.adminID.email %>
+                <% } else { %>
+                  <span class="meta">Hệ thống</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</div>
+
+<style>
+.inventory-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.inventory-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.inventory-card h3 {
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--primary);
+}
+
+.product-detail-img {
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.stock-section,
+.variants-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.stock-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  font-size: 1.2rem;
+}
+
+.stock-value {
+  font-weight: 700;
+  font-size: 1.5rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 8px;
+}
+
+.stock-value.in-stock {
+  background: #d4edda;
+  color: #155724;
+}
+
+.stock-value.low-stock {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.stock-value.out-stock {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.action-details {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.action-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.5rem;
+  user-select: none;
+}
+
+.action-details summary:hover {
+  background: var(--bg-hover);
+  border-radius: 4px;
+}
+
+.stock-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.stock-form label {
+  font-weight: 600;
+  margin-bottom: -0.5rem;
+}
+
+.stock-form input,
+.stock-form textarea {
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.variant-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  background: var(--bg-secondary);
+}
+
+.variant-header {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.log-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.log-table th,
+.log-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.log-table th {
+  background: var(--bg-secondary);
+  font-weight: 600;
+}
+
+.log-table tr:hover {
+  background: var(--bg-hover);
+}
+
+.log-type {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.log-import {
+  background: #d4edda;
+  color: #155724;
+}
+
+.log-export {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.log-adjust {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.log-sale {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+}
+
+.btn-warning {
+  background: #ffc107;
+  color: #212529;
+}
+
+.btn-warning:hover {
+  background: #e0a800;
+}
+
+@media (max-width: 968px) {
+  .inventory-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+<%- include('../../partials/footer') %>

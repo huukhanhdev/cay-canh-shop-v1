@@ -1,6 +1,10 @@
 <%- include('../partials/header', { title }) %>
 
-<% if (msg === 'canceled') { %>
+<% if (msg === 'paid') { %>
+  <p class="alert alert-success">✓ Thanh toán thành công qua Momo!</p>
+<% } else if (msg === 'pay_failed') { %>
+  <p class="alert alert-error">✗ Người dùng đã hủy giao dịch thanh toán.</p>
+<% } else if (msg === 'canceled') { %>
   <p class="alert alert-success">Đơn hàng đã được hủy thành công.</p>
 <% } else if (msg === 'reason_required') { %>
   <p class="alert alert-error">Vui lòng nhập lý do hủy đơn.</p>
@@ -14,6 +18,21 @@
   <section class="order-card">
     <h2>Đơn hàng #<%= order._id.toString().slice(-6) %></h2>
     <p><strong>Trạng thái:</strong> <span class="status status-<%= order.status %>"><%= order.status %></span></p>
+    <% if (order.paymentMethod === 'momo') { %>
+      <p><strong>Thanh toán:</strong> 
+        <% if (order.paymentStatus === 'paid') { %>
+          <span style="color: var(--success, green); font-weight: 600;">✓ Đã thanh toán (Momo)</span>
+        <% } else if (order.paymentStatus === 'failed') { %>
+          <span style="color: var(--danger, red); font-weight: 600;">✗ Thanh toán thất bại</span>
+        <% } else if (order.paymentStatus === 'pending') { %>
+          <span style="color: var(--warning, orange); font-weight: 600;">⏳ Chờ thanh toán (Momo)</span>
+        <% } else { %>
+          <span>Momo - <%= order.paymentStatus || 'unpaid' %></span>
+        <% } %>
+      </p>
+    <% } else { %>
+      <p><strong>Thanh toán:</strong> COD (Tiền mặt khi nhận hàng)</p>
+    <% } %>
     <p><strong>Ngày đặt:</strong> <%= new Date(order.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></p>
     <p><strong>Điểm thưởng:</strong> <%= order.pointEarned || 0 %></p>
   </section>

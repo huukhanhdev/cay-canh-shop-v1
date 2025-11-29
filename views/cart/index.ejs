@@ -9,6 +9,8 @@
     <p class="alert alert-success">Cập nhật giỏ hàng thành công.</p>
   <% } else if (message === 'empty') { %>
     <p class="alert alert-error">Giỏ hàng đang trống.</p>
+  <% } else if (message === 'exceed_stock') { %>
+    <p class="alert alert-error">Số lượng yêu cầu vượt quá tồn kho hiện có.</p>
   <% } else if (message === 'error') { %>
     <p class="alert alert-error">Không thể cập nhật giỏ hàng. Vui lòng thử lại.</p>
   <% } %>

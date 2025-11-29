@@ -19,8 +19,9 @@
 <div class="order-detail">
   <section class="order-card">
     <h3>Thông tin đơn hàng</h3>
-    <p><strong>Khách hàng:</strong> <%= order.userID ? (order.userID.fullName || order.userID.email) : 'N/A' %></p>
-    <p><strong>Email:</strong> <%= order.userID ? order.userID.email : 'N/A' %></p>
+    <p><strong>Khách hàng:</strong> <%= order.userID ? (order.userID.fullName || order.userID.email) : (order.customerName || '—') %></p>
+    <p><strong>Email:</strong> <%= order.userID ? order.userID.email : (order.customerEmail || '—') %></p>
+    <p><strong>SĐT:</strong> <%= (order.customerPhone || (order.address && order.address.phone) || '—') %></p>
     <p><strong>Ngày đặt:</strong> <%= new Date(order.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></p>
     <p><strong>Tổng tiền:</strong> <%= (order.totalPrice || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></p>
     <p><strong>Điểm thưởng sẽ nhận:</strong> <%= order.pointEarned || 0 %></p>
@@ -39,8 +40,43 @@
   </section>
 
   <section class="order-card">
+    <h3>Lịch sử trạng thái</h3>
+    <% if (order.statusHistory && order.statusHistory.length > 0) { %>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Trạng thái</th>
+            <th>Thời gian</th>
+            <th>Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% 
+            const sortedHistory = [...order.statusHistory].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+            sortedHistory.forEach((history) => { 
+          %>
+            <tr>
+              <td><span class="status status-<%= history.status %>"><%= history.status %></span></td>
+              <td><%= new Date(history.updatedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></td>
+              <td><%= history.note || '-' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <p style="color:var(--muted)">Chưa có lịch sử trạng thái.</p>
+    <% } %>
+  </section>
+
+  <section class="order-card">
     <h3>Địa chỉ giao hàng</h3>
-    <p><%= order.address?.street %>, <%= order.address?.district %>, <%= order.address?.city %></p>
+    <% const addr = order.address || {}; %>
+    <p><strong>Người nhận:</strong> <%= addr.fullName || order.customerName || (order.userID && (order.userID.fullName || order.userID.email)) || '—' %></p>
+    <p><strong>Điện thoại:</strong> <%= addr.phone || order.customerPhone || '—' %></p>
+    <p><strong>Địa chỉ:</strong> <%= [addr.street, addr.ward, addr.district, addr.city].filter(Boolean).join(', ') || '—' %></p>
+    <% if (addr.note) { %>
+      <p><strong>Ghi chú:</strong> <%= addr.note %></p>
+    <% } %>
   </section>
 
   <% if (order.status === 'canceled') { %>

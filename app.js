@@ -20,6 +20,7 @@ const adminOrderRoutes = require('./routes/adminOrderRoutes');
 const adminCustomerRoutes = require('./routes/adminCustomerRoutes');
 const adminCommentRoutes = require('./routes/adminCommentRoutes');
 const adminCouponRoutes = require('./routes/adminCouponRoutes');
+const adminInventoryRoutes = require('./routes/adminInventoryRoutes');
 const adminDashboardController = require('./controllers/admin/adminDashboardController');
 const adminDashboardApiRoutes = require('./routes/adminDashboardApiRoutes');
 const Product = require('./models/Product');
@@ -115,6 +116,7 @@ app.use('/account', requireLogin, accountRoutes);
 
 app.get('/admin/dashboard', requireLogin, requireAdmin, adminDashboardController.overview);
 app.use('/admin/products', requireLogin, requireAdmin, adminProductRoutes);
+app.use('/admin/inventory', requireLogin, requireAdmin, adminInventoryRoutes);
 app.use('/admin/orders', requireLogin, requireAdmin, adminOrderRoutes);
 app.use('/admin/customers', requireLogin, requireAdmin, adminCustomerRoutes);
 app.use('/admin/comments', requireLogin, requireAdmin, adminCommentRoutes);
