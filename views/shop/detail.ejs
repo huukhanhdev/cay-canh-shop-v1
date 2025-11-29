@@ -4,7 +4,7 @@
 
 <section class="product-detail">
   <div class="product-detail__gallery">
-    <div class="gallery-main">
+    <div class="gallery-main" data-images='<%- JSON.stringify(galleryImages) %>'>
       <img id="mainImage" src="<%= galleryImages[0] %>" alt="<%= product.name %>">
       <button class="gallery-nav prev" aria-label="Previous image">‹</button>
       <button class="gallery-nav next" aria-label="Next image">›</button>
@@ -188,45 +188,6 @@
       console.error('Socket error:', e);
     }
   })();
-
-  // Product gallery carousel - run immediately (DOM already loaded)
-  (function(){
-    const images = <%= JSON.stringify(galleryImages) %>;
-    console.log('Gallery images:', images);
-    if (!images || images.length <= 1) {
-      console.log('Not enough images for carousel');
-      return;
-    }
-    let currentIndex = 0;
-    const mainImg = document.getElementById('mainImage');
-    const prevBtn = document.querySelector('.gallery-nav.prev');
-    const nextBtn = document.querySelector('.gallery-nav.next');
-    const thumbs = document.querySelectorAll('.gallery-thumbs .thumb');
-    console.log('Found thumbs:', thumbs.length, 'mainImg:', !!mainImg);
-
-    if (!mainImg || !thumbs.length) {
-      console.warn('Gallery elements not found');
-      return;
-    }
-
-    function updateGallery(){
-      console.log('Update to index:', currentIndex);
-      mainImg.src = images[currentIndex];
-      thumbs.forEach((t, i) => t.classList.toggle('active', i === currentIndex));
-      if (prevBtn) prevBtn.classList.toggle('show', currentIndex > 0);
-      if (nextBtn) nextBtn.classList.toggle('show', currentIndex < images.length - 1);
-    }
-
-    if (prevBtn) prevBtn.addEventListener('click', () => { if (currentIndex > 0) { currentIndex--; updateGallery(); } });
-    if (nextBtn) nextBtn.addEventListener('click', () => { if (currentIndex < images.length - 1) { currentIndex++; updateGallery(); } });
-    thumbs.forEach((thumb, idx) => {
-      thumb.addEventListener('click', () => { 
-        console.log('Thumb clicked:', idx); 
-        currentIndex = idx; 
-        updateGallery(); 
-      });
-    });
-
-    updateGallery();
-  })();
 </script>
+<script src="/js/product-gallery.js"></script>
+

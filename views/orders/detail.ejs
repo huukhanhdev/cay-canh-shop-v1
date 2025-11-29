@@ -19,6 +19,36 @@
   </section>
 
   <section class="order-card">
+    <h3>Lịch sử trạng thái</h3>
+    <% if (order.statusHistory && order.statusHistory.length > 0) { %>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Trạng thái</th>
+            <th>Thời gian</th>
+            <th>Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% 
+            // Reverse chronological order (newest first)
+            const sortedHistory = [...order.statusHistory].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+            sortedHistory.forEach((history) => { 
+          %>
+            <tr>
+              <td><span class="status status-<%= history.status %>"><%= history.status %></span></td>
+              <td><%= new Date(history.updatedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></td>
+              <td><%= history.note || '-' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <p style="color:var(--muted)">Chưa có lịch sử trạng thái.</p>
+    <% } %>
+  </section>
+
+  <section class="order-card">
     <h3>Địa chỉ giao hàng</h3>
     <p><%= order.address?.street %>, <%= order.address?.district %>, <%= order.address?.city %></p>
   </section>
