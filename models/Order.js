@@ -47,6 +47,12 @@ const orderSchema = new Schema(
       enum: ["pending", "preparing", "shipping", "done", "canceled"],
       default: "pending",
     },
+    // Phương thức thanh toán: cod (mặc định) hoặc momo
+    paymentMethod: { type: String, enum: ["cod", "momo"], default: "cod" },
+    // Trạng thái thanh toán riêng (khi dùng cổng online)
+    paymentStatus: { type: String, enum: ["unpaid", "pending", "paid", "failed", "canceled"], default: "unpaid" },
+    // Mã giao dịch từ Momo (nếu có)
+    momoTransId: { type: String, trim: true },
     // Lịch sử trạng thái: mỗi lần đổi trạng thái sẽ append một bản ghi
     statusHistory: [
       new Schema(

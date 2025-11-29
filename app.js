@@ -13,6 +13,7 @@ const shopRoutes = require('./routes/shopRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const checkoutRoutes = require('./routes/checkoutRoutes');
 const orderRoutes = require('./routes/orderRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 const accountRoutes = require('./routes/accountRoutes');
 const adminProductRoutes = require('./routes/adminProductRoutes');
 const adminOrderRoutes = require('./routes/adminOrderRoutes');
@@ -109,6 +110,7 @@ app.use('/shop', shopRoutes);
 app.use('/cart', cartRoutes);
 app.use('/checkout', checkoutRoutes);
 app.use('/orders', requireLogin, orderRoutes);
+app.use('/payment', paymentRoutes);
 app.use('/account', requireLogin, accountRoutes);
 
 app.get('/admin/dashboard', requireLogin, requireAdmin, adminDashboardController.overview);

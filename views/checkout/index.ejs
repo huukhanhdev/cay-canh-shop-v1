@@ -72,7 +72,20 @@
 
     <section id="step-payment" style="display:none">
       <h3>Phương thức thanh toán</h3>
-      <label><input type="radio" name="paymentMethod" value="cod" checked> Thanh toán khi nhận hàng (COD)</label>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <input type="radio" name="paymentMethod" value="cod" checked> 
+        <span>Thanh toán khi nhận hàng (COD)</span>
+      </label>
+      <% if (isLoggedIn) { %>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <input type="radio" name="paymentMethod" value="momo"> 
+        <span>Thanh toán Momo <img src="https://developers.momo.vn/v3/img/logo.svg" alt="Momo" style="height:20px;vertical-align:middle;margin-left:4px"></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <input type="radio" name="paymentMethod" value="vnpay"> 
+        <span>Thanh toán VNPay <img src="https://vnpay.vn/s1/statics.vnpay.vn/2023/6/0oxhzjmxbksr1686814746087.png" alt="VNPay" style="height:20px;vertical-align:middle;margin-left:4px"></span>
+      </label>
+      <% } %>
       <div class="form-actions">
         <button class="btn btn-secondary" id="btnBackToShipping" type="button">Quay lại</button>
         <button class="btn btn-primary" id="btnToReview" type="button">Tiếp tục</button>
@@ -249,16 +262,46 @@
         console.log('Submit button clicked');
         e.preventDefault();
         
-        // Re-enable all required fields before submit
-        const allInputs = form.querySelectorAll('input, select, textarea');
-        allInputs.forEach(inp => {
-          if (inp.hasAttribute('data-was-required')) {
-            inp.setAttribute('required', '');
-          }
-        });
+        // Check payment method
+        const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value;
         
-        console.log('Submitting form...');
-        form.submit();
+        if (paymentMethod === 'momo') {
+          // Momo payment flow
+          btnSubmitOrder.disabled = true;
+          btnSubmitOrder.textContent = 'Đang xử lý...';
+          
+          fetch('/payment/momo/create', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          })
+          .then(r => r.json())
+          .then(data => {
+            if (data.ok && data.payUrl) {
+              window.location.href = data.payUrl;
+            } else {
+              alert('Lỗi: ' + (data.error || 'Không tạo được phiên thanh toán'));
+              btnSubmitOrder.disabled = false;
+              btnSubmitOrder.textContent = 'Đặt hàng';
+            }
+          })
+          .catch(err => {
+            alert('Lỗi kết nối: ' + err.message);
+            btnSubmitOrder.disabled = false;
+            btnSubmitOrder.textContent = 'Đặt hàng';
+          });
+        } else {
+          // COD: submit form normally
+          // Re-enable all required fields before submit
+          const allInputs = form.querySelectorAll('input, select, textarea');
+          allInputs.forEach(inp => {
+            if (inp.hasAttribute('data-was-required')) {
+              inp.setAttribute('required', '');
+            }
+          });
+          
+          console.log('Submitting form...');
+          form.submit();
+        }
       });
     }
 

@@ -2,16 +2,10 @@
 (function() {
   // Get images from data attribute
   const galleryMain = document.querySelector('.gallery-main');
-  if (!galleryMain) {
-    console.log('No gallery found');
-    return;
-  }
+  if (!galleryMain) return;
 
   const imagesData = galleryMain.getAttribute('data-images');
-  if (!imagesData) {
-    console.log('No images data');
-    return;
-  }
+  if (!imagesData) return;
 
   let images;
   try {
@@ -20,29 +14,18 @@
     console.error('Failed to parse images:', e);
     return;
   }
-
-  console.log('Gallery images:', images);
   
-  if (!images || images.length <= 1) {
-    console.log('Not enough images for carousel');
-    return;
-  }
+  if (!images || images.length <= 1) return;
 
   let currentIndex = 0;
   const mainImg = document.getElementById('mainImage');
   const prevBtn = document.querySelector('.gallery-nav.prev');
   const nextBtn = document.querySelector('.gallery-nav.next');
   const thumbs = document.querySelectorAll('.gallery-thumbs .thumb');
-  
-  console.log('Found thumbs:', thumbs.length, 'mainImg:', !!mainImg);
 
-  if (!mainImg || !thumbs.length) {
-    console.warn('Gallery elements not found');
-    return;
-  }
+  if (!mainImg || !thumbs.length) return;
 
   function updateGallery() {
-    console.log('Update to index:', currentIndex);
     mainImg.src = images[currentIndex];
     thumbs.forEach((t, i) => {
       if (i === currentIndex) {

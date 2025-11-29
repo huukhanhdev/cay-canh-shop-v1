@@ -1,7 +1,7 @@
-# Environment variables
+# Environment variables (IMPORTANT: Never commit sensitive credentials)
 .env
 .env.*
-.env.docker
+!.env.example
 
 # Node modules
 node_modules/
@@ -11,10 +11,33 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
 
 # OS files
 .DS_Store
+Thumbs.db
 
-# Build
+# Build & Distribution
 dist/
 build/
+*.tgz
+
+# Python virtual environment
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Secrets folder
+secrets/
+
+# Test coverage
+coverage/
+.nyc_output/
