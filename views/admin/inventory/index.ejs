@@ -62,28 +62,28 @@
           const stockClass = stockCount === 0 ? 'out-stock' : (stockCount <= 10 ? 'low-stock' : 'in-stock');
         %>
           <tr>
-            <td><img src="<%= productImg %>" alt="<%= product.name %>" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;"></td>
-            <td>
+            <td data-label="Hình ảnh"><img src="<%= productImg %>" alt="<%= product.name %>" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;"></td>
+            <td data-label="Tên sản phẩm">
               <strong><%= product.name %></strong>
               <div class="meta"><%= product.slug %></div>
             </td>
-            <td><%= product.sku || '-' %></td>
-            <td><%= product.type === 'plant' ? 'Cây' : 'Chậu' %></td>
-            <td>
+            <td data-label="SKU"><%= product.sku || '-' %></td>
+            <td data-label="Loại"><%= product.type === 'plant' ? 'Cây' : 'Chậu' %></td>
+            <td data-label="Tồn kho">
               <% if (hasVariants) { %>
                 <span class="meta">Xem chi tiết</span>
               <% } else { %>
                 <span class="stock-badge <%= stockClass %>"><%= stockCount %></span>
               <% } %>
             </td>
-            <td>
+            <td data-label="Biến thể">
               <% if (hasVariants) { %>
                 <span class="badge badge-info"><%= product.variants.length %> biến thể</span>
               <% } else { %>
                 -
               <% } %>
             </td>
-            <td>
+            <td data-label="Trạng thái">
               <% if (!hasVariants) { %>
                 <% if (stockCount === 0) { %>
                   <span class="badge badge-error">Hết hàng</span>
@@ -96,7 +96,7 @@
                 <span class="badge badge-info">Nhiều biến thể</span>
               <% } %>
             </td>
-            <td>
+            <td data-label="Thao tác">
               <a href="/admin/inventory/<%= product._id %>" class="btn btn-sm btn-primary">Chi tiết kho</a>
             </td>
           </tr>

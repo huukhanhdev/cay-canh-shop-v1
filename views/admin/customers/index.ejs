@@ -81,21 +81,21 @@
       <% } %>
       <% users.forEach((user) => { %>
         <tr>
-          <td>
+          <td data-label="Khách hàng">
             <strong><%= user.fullName %></strong>
           </td>
-          <td><%= user.email %></td>
-          <td><%= user.role %></td>
-          <td>
+          <td data-label="Email"><%= user.email %></td>
+          <td data-label="Vai trò"><%= user.role %></td>
+          <td data-label="Xác thực">
             <% if (user.isVerified) { %>
               <span class="status status-done">Đã xác thực</span>
             <% } else { %>
               <span class="status status-pending">Chưa xác thực</span>
             <% } %>
           </td>
-          <td><%= user.loyaltyPoints || 0 %></td>
-          <td><%= new Date(user.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></td>
-          <td><a class="btn btn-secondary" href="/admin/customers/<%= user._id %>">Chi tiết</a></td>
+          <td data-label="Điểm"><%= user.loyaltyPoints || 0 %></td>
+          <td data-label="Đăng ký"><%= new Date(user.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></td>
+          <td data-label="Chi tiết"><a class="btn btn-secondary" href="/admin/customers/<%= user._id %>">Chi tiết</a></td>
         </tr>
       <% }) %>
     </tbody>

@@ -1925,11 +1925,57 @@ a:focus, button:focus, input:focus, select:focus {
     grid-template-columns: 1fr;
   }
 
+  .checkout-summary {
+    order: -1;
+    margin-bottom: 24px;
+  }
+
   .shop-layout {
     grid-template-columns: 1fr;
   }
+  
   .profile-layout {
     grid-template-columns: 1fr;
+  }
+
+  .product-detail {
+    grid-template-columns: 1fr !important;
+    gap: 20px;
+  }
+
+  .cart-summary {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .cart-summary .btn {
+    width: 100%;
+  }
+
+  .order-detail {
+    padding: 16px;
+  }
+
+  /* Make tables horizontally scrollable */
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrapper table {
+    min-width: 600px;
+  }
+
+  /* Stack address cards on mobile */
+  .address-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .address-card__actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 
@@ -2047,7 +2093,190 @@ a:focus, button:focus, input:focus, select:focus {
 .top-products li { padding:8px 0; border-bottom:1px dashed rgba(31,75,31,0.04); display:flex; justify-content:space-between; gap:12px; align-items:center; }
 
 @media (max-width:720px){ .adv-kpis-grid { grid-template-columns: 1fr 1fr; } }
-@media (max-width:480px){ .adv-kpis-grid { grid-template-columns: 1fr; } }
+@media (max-width:480px){ 
+  .adv-kpis-grid { grid-template-columns: 1fr; }
+  
+  /* Extra small screens */
+  main {
+    padding: 0 12px 32px;
+  }
+
+  form {
+    padding: 20px;
+  }
+
+  .hero__content h1 {
+    font-size: 1.8rem;
+  }
+
+  .btn, button {
+    font-size: 0.85rem;
+    padding: 10px 14px;
+  }
+
+  .checkout-form {
+    padding: 16px;
+  }
+
+  .checkout-summary {
+    padding: 16px;
+  }
+
+  .product-card {
+    padding: 12px;
+  }
+
+  .shop-controls {
+    padding: 14px 16px;
+  }
+
+  .shop-controls label {
+    min-width: 100%;
+  }
+
+  /* Variant selector mobile adjustments */
+  .variant-option .variant-label {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .variant-price-stock {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .variant-name {
+    font-size: 0.95rem;
+  }
+
+  .variant-price {
+    font-size: 1rem;
+  }
+
+  /* Cart table to card layout on mobile */
+  .cart-table thead {
+    display: none;
+  }
+
+  .cart-table tbody,
+  .cart-table tr {
+    display: block;
+  }
+
+  .cart-table tr {
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    background: var(--surface);
+  }
+
+  .cart-table td {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border: none;
+    text-align: right;
+  }
+
+  .cart-table td:before {
+    content: attr(data-label);
+    font-weight: 600;
+    text-align: left;
+    color: var(--muted);
+    flex: 0 0 40%;
+  }
+
+  .cart-table td:first-child {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cart-table td:first-child:before {
+    display: none;
+  }
+
+  .cart-update-form {
+    flex-direction: column;
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .cart-update-form input[type="number"] {
+    width: 100%;
+  }
+
+  .cart-update-form button,
+  .cart-remove-form button {
+    width: 100%;
+  }
+
+  /* Order table responsive */
+  .table thead,
+  .admin-table thead {
+    display: none;
+  }
+
+  .table tbody,
+  .table tr,
+  .admin-table tbody,
+  .admin-table tr {
+    display: block;
+  }
+
+  .table tr,
+  .admin-table tr {
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    background: var(--surface);
+  }
+
+  .table td,
+  .admin-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border: none;
+    text-align: right;
+    gap: 8px;
+  }
+
+  .table td:before,
+  .admin-table td:before {
+    content: attr(data-label);
+    font-weight: 600;
+    text-align: left;
+    color: var(--muted);
+    flex: 0 0 40%;
+    font-size: 0.85rem;
+  }
+
+  .table td .btn,
+  .admin-table td .btn {
+    width: auto;
+    margin-top: 0;
+    white-space: nowrap;
+  }
+
+  /* Admin filters on mobile */
+  .admin-filters {
+    padding: 12px;
+  }
+
+  .admin-filters label {
+    font-size: 0.85rem;
+  }
+}
 
 /* Admin product filters styling */
 .admin-filters {

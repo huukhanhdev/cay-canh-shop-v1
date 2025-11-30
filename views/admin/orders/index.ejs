@@ -69,16 +69,16 @@
       <% } %>
       <% orders.forEach((order) => { %>
         <tr>
-          <td>#<%= order._id.toString().slice(-6) %></td>
-          <td><%= order.userID ? order.userID.fullName || order.userID.email : 'N/A' %></td>
-          <td><%= new Date(order.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></td>
-          <td><span class="status status-<%= order.status %>"><%= order.status %></span></td>
-          <td>
+          <td data-label="Mã đơn">#<%= order._id.toString().slice(-6) %></td>
+          <td data-label="Khách hàng"><%= order.userID ? order.userID.fullName || order.userID.email : 'N/A' %></td>
+          <td data-label="Ngày đặt"><%= new Date(order.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) %></td>
+          <td data-label="Trạng thái"><span class="status status-<%= order.status %>"><%= order.status %></span></td>
+          <td data-label="Địa chỉ giao">
             <% const addr = order.address || {}; %>
             <%= [addr.street, addr.district, addr.city].filter(Boolean).join(', ') || '—' %>
           </td>
-          <td><%= (order.totalPrice || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
-          <td><a class="btn btn-secondary" href="/admin/orders/<%= order._id %>">Chi tiết</a></td>
+          <td data-label="Tổng tiền"><%= (order.totalPrice || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
+          <td data-label="Chi tiết"><a class="btn btn-secondary" href="/admin/orders/<%= order._id %>">Chi tiết</a></td>
         </tr>
       <% }) %>
     </tbody>

@@ -35,13 +35,13 @@
         const productIdValue = rawId && rawId.toString ? rawId.toString() : rawId;
       %>
         <tr data-product-id="<%= productIdValue %>" data-variant-id="<%= item.variantId || '' %>">
-          <td>
+          <td data-label="Sản phẩm">
             <strong><%= item.productName %></strong>
             <% if (item.variant && item.variant.variantName) { %>
               <div class="meta">Biến thể: <%= item.variant.variantName %> <%= item.variant.size ? `(${item.variant.size})` : '' %></div>
             <% } %>
           </td>
-          <td>
+          <td data-label="Số lượng">
             <form method="POST" action="/cart/update" class="cart-update-form" data-product-id="<%= productIdValue %>" data-variant-id="<%= item.variantId || '' %>">
               <input type="hidden" name="productId" value="<%= productIdValue %>">
               <input type="hidden" name="variantId" value="<%= item.variantId || '' %>">
@@ -49,9 +49,9 @@
               <button class="btn btn-secondary" type="submit">Cập nhật</button>
             </form>
           </td>
-          <td><%= item.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
-          <td class="row-subtotal"><%= item.subTotal.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
-          <td>
+          <td data-label="Giá"><%= item.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
+          <td data-label="Tạm tính" class="row-subtotal"><%= item.subTotal.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
+          <td data-label="Thao tác">
             <form method="POST" action="/cart/update" class="cart-remove-form" data-product-id="<%= productIdValue %>" data-variant-id="<%= item.variantId || '' %>">
               <input type="hidden" name="productId" value="<%= productIdValue %>">
               <input type="hidden" name="variantId" value="<%= item.variantId || '' %>">

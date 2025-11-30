@@ -88,15 +88,15 @@
       <% } %>
       <% products.forEach((product) => { %>
         <tr>
-          <td>
+          <td data-label="Sản phẩm">
             <strong><%= product.name %></strong>
             <div class="meta">Slug: <%= product.slug %></div>
           </td>
-          <td><%= product.categoryID ? product.categoryID.name : '—' %></td>
-          <td><%= product.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
-          <td><%= (categoryLabels[product.type] || product.type) %></td>
-          <td><%= product.updatedAt ? new Date(product.updatedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '' %></td>
-          <td class="actions">
+          <td data-label="Danh mục"><%= product.categoryID ? product.categoryID.name : '—' %></td>
+          <td data-label="Giá"><%= product.price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) %></td>
+          <td data-label="Loại"><%= (categoryLabels[product.type] || product.type) %></td>
+          <td data-label="Cập nhật"><%= product.updatedAt ? new Date(product.updatedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '' %></td>
+          <td data-label="Thao tác" class="actions">
             <a class="btn btn-secondary" href="/admin/products/<%= product._id %>/edit">Sửa</a>
             <form method="POST" action="/admin/products/<%= product._id %>/delete" onsubmit="return confirm('Bạn chắc chắn muốn xóa sản phẩm này?');">
               <button type="submit" class="btn btn-danger">Xóa</button>
