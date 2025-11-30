@@ -5,9 +5,73 @@ const User = require('../models/User');
 const Coupon = require('../models/Coupon');
 const { locations, normalizeLocation } = require('../helpers/location');
 const { computeSummary } = require('../utils/pricing');
+const { logInventoryChange } = require('./admin/adminInventoryController');
 
 function normalizeEmail(email = '') {
   return email.trim().toLowerCase();
+}
+
+/**
+ * Decrement stock for order items (same logic as payment controller)
+ */
+async function decrementStock(order) {
+  try {
+    for (const item of order.items) {
+      const product = await Product.findById(item.productID);
+      if (!product) continue;
+
+      let previousStock, newStock;
+
+      // If order item has variantId, decrement that variant's stock
+      if (item.variantId && product.variants?.length) {
+        const variant = product.variants.id(item.variantId);
+        if (variant && variant.stock >= item.quantity) {
+          previousStock = variant.stock;
+          variant.stock -= item.quantity;
+          newStock = variant.stock;
+          
+          // Log inventory change for variant
+          await logInventoryChange({
+            productID: product._id,
+            variantId: item.variantId,
+            type: 'sale',
+            quantity: item.quantity,
+            previousStock,
+            newStock,
+            reason: 'Bán hàng (COD)',
+            note: `Đơn hàng: ${order._id.toString().slice(-6)}`,
+            orderID: order._id
+          });
+        }
+      } else {
+        // Otherwise decrement product inStock
+        if (product.inStock >= item.quantity) {
+          previousStock = product.inStock;
+          product.inStock -= item.quantity;
+          newStock = product.inStock;
+          
+          // Log inventory change for product
+          await logInventoryChange({
+            productID: product._id,
+            variantId: null,
+            type: 'sale',
+            quantity: item.quantity,
+            previousStock,
+            newStock,
+            reason: 'Bán hàng (COD)',
+            note: `Đơn hàng: ${order._id.toString().slice(-6)}`,
+            orderID: order._id
+          });
+        }
+      }
+
+      // Increment soldCount
+      product.soldCount = (product.soldCount || 0) + item.quantity;
+      await product.save();
+    }
+  } catch (err) {
+    console.error('Error decrementing stock:', err);
+  }
 }
 
 async function getOrCreateCart(userID) {
@@ -600,6 +664,38 @@ exports.postCheckout = async (req, res) => {
     });
   }
 
+  // Validate stock availability before creating order
+  for (const item of cart.items) {
+    const product = await Product.findById(item.productID);
+    if (!product) {
+      return res.status(400).render('checkout/index', {
+        title: 'Thanh toán',
+        cart,
+        error: `Sản phẩm "${item.productName}" không còn tồn tại.`,
+        prefill: buildPrefillFromBody(filledPayload),
+        isLoggedIn,
+        savedAddresses,
+        locations,
+      });
+    }
+
+    const availableStock = item.variantId && product.variants?.length
+      ? (product.variants.id(item.variantId)?.stock || 0)
+      : (product.inStock || 0);
+
+    if (item.quantity > availableStock) {
+      return res.status(400).render('checkout/index', {
+        title: 'Thanh toán',
+        cart,
+        error: `Sản phẩm "${item.productName}" chỉ còn ${availableStock} trong kho. Vui lòng cập nhật giỏ hàng.`,
+        prefill: buildPrefillFromBody(filledPayload),
+        isLoggedIn,
+        savedAddresses,
+        locations,
+      });
+    }
+  }
+
   try {
     let userId = req.session?.user?.id;
     let userDoc = null;
@@ -685,6 +781,9 @@ exports.postCheckout = async (req, res) => {
     });
 
     await order.save();
+
+    // NOTE: Stock will be decremented when admin marks order as 'done', not at order creation
+    // This allows cancellation without stock restoration complexity
 
     // Update user loyalty points: deduct used now; add earned later (or immediately per requirement)
     try {

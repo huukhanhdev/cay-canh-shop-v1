@@ -193,29 +193,39 @@ exports.updateStatus = async (req, res) => {
       order.statusHistory.push({ status, updatedAt: new Date(), note });
     }
 
-    if (previousStatus !== 'done' && status === 'done' && !order.pointRewarded) {
-      const points = order.pointEarned || Math.floor((order.totalPrice || 0) / 10000);
-      if (points > 0) {
-        if (user) {
+    // Deduct stock when order is marked as done (only once)
+    if (previousStatus !== 'done' && status === 'done') {
+      if (!order.stockDeducted) {
+        await deductOrderStock(order);
+      }
+      // Award loyalty points
+      if (!order.pointRewarded) {
+        const points = order.pointEarned || Math.floor((order.totalPrice || 0) / 10000);
+        if (points > 0 && user) {
           user.loyaltyPoints = (user.loyaltyPoints || 0) + points;
           await user.save();
         }
+        order.pointRewarded = true;
       }
-      order.pointRewarded = true;
-
-      await deductOrderStock(order);
     }
 
-    if (previousStatus === 'done' && status !== 'done' && order.pointRewarded) {
-      const points = order.pointEarned || Math.floor((order.totalPrice || 0) / 10000);
-      if (points > 0) {
-        if (user) {
+    // Restore stock and reverse points if order is reverted from done
+    if (previousStatus === 'done' && status !== 'done') {
+      if (order.stockDeducted) {
+        await restoreOrderStock(order);
+      }
+      if (order.pointRewarded) {
+        const points = order.pointEarned || Math.floor((order.totalPrice || 0) / 10000);
+        if (points > 0 && user) {
           user.loyaltyPoints = Math.max(0, (user.loyaltyPoints || 0) - points);
           await user.save();
         }
+        order.pointRewarded = false;
       }
-      order.pointRewarded = false;
+    }
 
+    // If order is canceled from any status, restore stock if it was deducted
+    if (status === 'canceled' && order.stockDeducted) {
       await restoreOrderStock(order);
     }
 

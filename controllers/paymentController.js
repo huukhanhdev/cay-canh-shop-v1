@@ -86,6 +86,24 @@ exports.createMomoPayment = async (req, res) => {
       return res.status(400).json({ error: 'Giỏ hàng trống' });
     }
 
+    // Validate stock availability before creating Momo payment
+    for (const item of cart.items) {
+      const product = await Product.findById(item.productID);
+      if (!product) {
+        return res.status(400).json({ error: `Sản phẩm "${item.productName}" không còn tồn tại` });
+      }
+
+      const availableStock = item.variantId && product.variants?.length
+        ? (product.variants.id(item.variantId)?.stock || 0)
+        : (product.inStock || 0);
+
+      if (item.quantity > availableStock) {
+        return res.status(400).json({ 
+          error: `Sản phẩm "${item.productName}" chỉ còn ${availableStock} trong kho. Vui lòng cập nhật giỏ hàng.` 
+        });
+      }
+    }
+
     const subtotal = cart.totalPrice || 0;
     if (subtotal <= 0) {
       return res.status(400).json({ error: 'Số tiền không hợp lệ' });
@@ -213,8 +231,8 @@ exports.returnHandler = async (req, res) => {
       order.pointRewarded = true;
       await order.save();
       
-      // Decrement stock after successful payment
-      await decrementStock(order);
+      // NOTE: Stock will be decremented when admin marks order as 'done', not at payment
+      // This prevents issues with order cancellation/refund
       
       // Update loyalty points (deduct used, add earned)
       try {
@@ -323,8 +341,7 @@ exports.ipnHandler = async (req, res) => {
       });
       order.pointRewarded = true;
       
-      // Decrement stock after successful IPN
-      await decrementStock(order);
+      // NOTE: Stock will be decremented when admin marks order as 'done'
       
       // Update loyalty points (deduct used, add earned)
       try {
